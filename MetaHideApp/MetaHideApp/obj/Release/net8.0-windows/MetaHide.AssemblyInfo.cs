@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("MetaHide")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+31c7030cff53931a80c53d443561cdaf5f6fd659")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+35dfb4f7ac8c536c9dad309db1e509516c1d2efc")]
 [assembly: System.Reflection.AssemblyProductAttribute("MetaHide")]
 [assembly: System.Reflection.AssemblyTitleAttribute("MetaHide")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
