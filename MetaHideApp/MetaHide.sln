@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.37012.4 d17.14
+VisualStudioVersion = 17.14.37012.4
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "test", "test\test.csproj", "{81955C3A-2D41-4918-BE45-7264A7FB58BB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MetaHide", "MetaHideApp\MetaHide.csproj", "{6DF6A49D-45CC-372E-46DD-C317E1B5C340}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -11,10 +11,10 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{81955C3A-2D41-4918-BE45-7264A7FB58BB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{81955C3A-2D41-4918-BE45-7264A7FB58BB}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{81955C3A-2D41-4918-BE45-7264A7FB58BB}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{81955C3A-2D41-4918-BE45-7264A7FB58BB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6DF6A49D-45CC-372E-46DD-C317E1B5C340}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6DF6A49D-45CC-372E-46DD-C317E1B5C340}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6DF6A49D-45CC-372E-46DD-C317E1B5C340}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6DF6A49D-45CC-372E-46DD-C317E1B5C340}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
