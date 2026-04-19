@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MetaHide
+namespace MetaHide;
+
+internal class Model
 {
-    internal class Model
-    {
-    }
+    
 }
