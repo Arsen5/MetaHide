@@ -1,132 +1,137 @@
-﻿// Model.cs
-using System;
+﻿using System;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Text;
-using System.Windows.Forms; // для MessageBox
+using System.IO;
+using System.Linq;
+using MetadataExtractor;
+using MetadataExtractor.Formats.Exif;
 
 namespace test
 {
     internal class Model : ISteganography
     {
-        // Временное хранилище для извлечённых данных (для отладки)
-        private string _lastExtractedData = "";
-        // Внутри класса Model
-        public string GetAllExifFields(string imagePath)
+        private bool _hiddenMode = false;
+        private const string HIDDEN_MARKER = "##HIDDEN##"; // Маркер скрытых данных
+
+        // Для обычного режима (видимый в EXIF)
+        private const int IMAGE_DESCRIPTION = 0x010E;
+
+        public void SetHiddenMode(bool hidden)
         {
-            try
-            {
-                using (Image img = Image.FromFile(imagePath))
-                {
-                    PropertyItem[] propItems = img.PropertyItems;
-
-                    if (propItems == null || propItems.Length == 0)
-                        return "В этом изображении нет EXIF-полей.";
-
-                    // Строим вывод
-                    System.Text.StringBuilder sb = new System.Text.StringBuilder();
-                    sb.AppendLine("═══════════════════════════════════════════════════════════════════════════");
-                    sb.AppendLine($"📷 Анализ EXIF полей: {System.IO.Path.GetFileName(imagePath)}");
-                    sb.AppendLine($"📁 Всего полей: {propItems.Length}");
-                    sb.AppendLine("═══════════════════════════════════════════════════════════════════════════");
-                    sb.AppendLine();
-
-                    foreach (PropertyItem prop in propItems)
-                    {
-                        string tagName = ExifDictionary.GetTagName(prop.Id);
-                        string typeName = ExifDictionary.GetTypeName(prop.Type);
-                        string value = ExifDictionary.FormatValue(prop.Value, prop.Type);
-
-                        sb.AppendLine($"🔹 ID: 0x{prop.Id:X4} ({prop.Id})");
-                        sb.AppendLine($"   📛 Название: {tagName}");
-                        sb.AppendLine($"   📦 Тип: {typeName}");
-                        sb.AppendLine($"   📏 Размер: {prop.Len} байт");
-                        sb.AppendLine($"   📝 Значение: {value}");
-                        sb.AppendLine("───────────────────────────────────────────────────────────────────────");
-                        sb.AppendLine();
-                    }
-
-                    return sb.ToString();
-                }
-            }
-            catch (Exception ex)
-            {
-                return $"Ошибка при чтении EXIF: {ex.Message}";
-            }
+            _hiddenMode = hidden;
         }
-        public void HideData(string imagePath, string data)
+
+        public int GetCurrentFieldId()
+        {
+            return _hiddenMode ? 0xFFFF : IMAGE_DESCRIPTION;
+        }
+
+        // Главный метод скрытия
+        public (bool success, string message, string outputPath) HideData(string imagePath, string data)
         {
             try
             {
-                // Проверка: текст не должен быть пустым
+                if (!File.Exists(imagePath))
+                    return (false, "Файл не найден", null);
+
                 if (string.IsNullOrEmpty(data))
-                    throw new Exception("Текст не может быть пустым");
+                    return (false, "Текст не может быть пустым", null);
 
-                // Проверка размера (≥1 Кб = 1024 байта)
-                byte[] dataBytes = Encoding.UTF8.GetBytes(data);
-                if (dataBytes.Length < 1024)
-                    throw new Exception($"Текст слишком короткий! Нужно минимум 1 Кб ({1024} байт), а у вас {dataBytes.Length} байт");
+                // Сохраняем на рабочий стол
+                string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+                string fileName = Path.GetFileNameWithoutExtension(imagePath) + "_hidden.jpg";
+                string outputPath = Path.Combine(desktopPath, fileName);
 
-                // Открываем изображение
-                using (Image img = Image.FromFile(imagePath))
+                if (_hiddenMode)
                 {
-                    // Получаем существующий EXIF или создаём новый
-                    PropertyItem prop = GetOrCreatePropertyItem(img, 0x010E); // 0x010E = ImageDescription
+                    // СКРЫТЫЙ РЕЖИМ: данные в конец файла
+                    File.Copy(imagePath, outputPath, true);
+                    byte[] dataBytes = Encoding.UTF8.GetBytes(data);
+                    byte[] markerBytes = Encoding.ASCII.GetBytes(HIDDEN_MARKER);
+                    byte[] lengthBytes = BitConverter.GetBytes(dataBytes.Length);
 
-                    // Записываем текст в байтах
-                    prop.Value = dataBytes;
-                    prop.Len = dataBytes.Length;
-                    prop.Type = 2; // ASCII (хотя мы пишем UTF-8, но так принимают)
-
-                    // Устанавливаем свойство
-                    img.SetPropertyItem(prop);
-
-                    // Сохраняем с тем же качеством
-                    img.Save(imagePath + "_hidden.jpg", ImageFormat.Jpeg);
+                    using (FileStream fs = new FileStream(outputPath, FileMode.Append))
+                    {
+                        fs.Write(markerBytes, 0, markerBytes.Length);
+                        fs.Write(lengthBytes, 0, lengthBytes.Length);
+                        fs.Write(dataBytes, 0, dataBytes.Length);
+                    }
+                    return (true, $"Скрытые данные добавлены в конец файла (размер {dataBytes.Length} байт)", outputPath);
                 }
-
-                MessageBox.Show($"Данные скрыты! Сохранено как: {imagePath}_hidden.jpg", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                else
+                {
+                    // ОБЫЧНЫЙ РЕЖИМ: данные в ImageDescription (видимый)
+                    using (Image img = Image.FromFile(imagePath))
+                    {
+                        PropertyItem prop = (PropertyItem)Activator.CreateInstance(typeof(PropertyItem), true);
+                        prop.Id = IMAGE_DESCRIPTION;
+                        prop.Type = 2;
+                        prop.Value = Encoding.UTF8.GetBytes(data);
+                        prop.Len = prop.Value.Length;
+                        img.SetPropertyItem(prop);
+                        img.Save(outputPath, ImageFormat.Jpeg);
+                    }
+                    return (true, $"Данные записаны в ImageDescription (видимый режим)", outputPath);
+                }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка при скрытии: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return (false, $"Ошибка: {ex.Message}", null);
             }
         }
 
-        public string ExtractData(string imagePath)
+        // Главный метод извлечения
+        public (bool success, string message, string data) ExtractData(string imagePath)
         {
             try
             {
-                using (Image img = Image.FromFile(imagePath))
-                {
-                    // Пытаемся получить свойство ImageDescription
-                    PropertyItem[] propItems = img.PropertyItems;
-                    PropertyItem targetProp = null;
+                if (!File.Exists(imagePath))
+                    return (false, "Файл не найден", null);
 
-                    foreach (var prop in propItems)
+                if (_hiddenMode)
+                {
+                    // СКРЫТЫЙ РЕЖИМ: ищем маркер в конце файла
+                    byte[] fileBytes = File.ReadAllBytes(imagePath);
+                    byte[] markerBytes = Encoding.ASCII.GetBytes(HIDDEN_MARKER);
+
+                    for (int i = fileBytes.Length - markerBytes.Length; i >= 0; i--)
                     {
-                        if (prop.Id == 0x010E) // ImageDescription
+                        bool found = true;
+                        for (int j = 0; j < markerBytes.Length; j++)
+                            if (fileBytes[i + j] != markerBytes[j]) { found = false; break; }
+
+                        if (found)
                         {
-                            targetProp = prop;
-                            break;
+                            int dataStart = i + markerBytes.Length;
+                            if (dataStart + 4 > fileBytes.Length) break;
+                            int dataLen = BitConverter.ToInt32(fileBytes, dataStart);
+                            if (dataStart + 4 + dataLen > fileBytes.Length) break;
+                            byte[] dataBytes = new byte[dataLen];
+                            Array.Copy(fileBytes, dataStart + 4, dataBytes, 0, dataLen);
+                            string extracted = Encoding.UTF8.GetString(dataBytes);
+                            return (true, $"Извлечено {dataLen} байт из скрытых данных", extracted);
                         }
                     }
-
-                    if (targetProp == null)
-                        throw new Exception("Скрытые данные не найдены (нет поля ImageDescription)");
-
-                    // Декодируем байты в строку
-                    string extracted = Encoding.UTF8.GetString(targetProp.Value);
-                    _lastExtractedData = extracted;
-
-                    MessageBox.Show($"Данные извлечены! Длина: {extracted.Length} символов", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    return extracted;
+                    return (false, "Скрытые данные не найдены", null);
+                }
+                else
+                {
+                    // ОБЫЧНЫЙ РЕЖИМ: читаем ImageDescription через MetadataExtractor
+                    var directories = ImageMetadataReader.ReadMetadata(imagePath);
+                    var exifDir = directories.OfType<ExifIfd0Directory>().FirstOrDefault();
+                    if (exifDir != null)
+                    {
+                        var tag = exifDir.Tags.FirstOrDefault(t => t.Type == IMAGE_DESCRIPTION);
+                        if (tag != null && tag.Description != null)
+                            return (true, "Данные извлечены из ImageDescription", tag.Description);
+                    }
+                    return (false, "Поле ImageDescription не найдено", null);
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка при извлечении: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return "";
+                return (false, $"Ошибка: {ex.Message}", null);
             }
         }
 
@@ -134,37 +139,87 @@ namespace test
         {
             try
             {
-                using (Image img = Image.FromFile(imagePath))
+                if (_hiddenMode)
                 {
-                    foreach (PropertyItem prop in img.PropertyItems)
+                    byte[] fileBytes = File.ReadAllBytes(imagePath);
+                    byte[] markerBytes = Encoding.ASCII.GetBytes(HIDDEN_MARKER);
+                    for (int i = fileBytes.Length - markerBytes.Length; i >= 0; i--)
                     {
-                        if (prop.Id == 0x010E && prop.Value.Length > 0)
-                            return true;
+                        bool found = true;
+                        for (int j = 0; j < markerBytes.Length; j++)
+                            if (fileBytes[i + j] != markerBytes[j]) { found = false; break; }
+                        if (found) return true;
                     }
+                    return false;
+                }
+                else
+                {
+                    var directories = ImageMetadataReader.ReadMetadata(imagePath);
+                    var exifDir = directories.OfType<ExifIfd0Directory>().FirstOrDefault();
+                    return exifDir != null && exifDir.Tags.Any(t => t.Type == IMAGE_DESCRIPTION);
                 }
             }
-            catch { }
-            return false;
+            catch { return false; }
         }
 
-        // Вспомогательный метод: получить существующий PropertyItem или создать новый
-        private PropertyItem GetOrCreatePropertyItem(Image img, int id)
+        public string GetAllExifFields(string imagePath)
         {
-            foreach (PropertyItem prop in img.PropertyItems)
+            try
             {
-                if (prop.Id == id)
-                    return prop;
+                var sb = new StringBuilder();
+                sb.AppendLine($"═══════════════════════════════════════════════════════════════════════════");
+                sb.AppendLine($"📷 Анализ файла: {Path.GetFileName(imagePath)}");
+                sb.AppendLine($"🎯 Режим: {(_hiddenMode ? "СКРЫТЫЙ (данные в конце файла)" : "ОБЫЧНЫЙ (EXIF)")}");
+                sb.AppendLine($"📦 Размер файла: {new FileInfo(imagePath).Length} байт");
+                sb.AppendLine("═══════════════════════════════════════════════════════════════════════════");
+                sb.AppendLine();
+
+                if (_hiddenMode)
+                {
+                    // Проверяем наличие скрытых данных
+                    var result = ExtractData(imagePath);
+                    if (result.success)
+                    {
+                        sb.AppendLine($"🔒 СКРЫТЫЕ ДАННЫЕ НАЙДЕНЫ:");
+                        sb.AppendLine($"   📝 Длина: {result.data.Length} символов");
+                        sb.AppendLine($"   💬 Содержимое: {result.data.Substring(0, Math.Min(200, result.data.Length))}");
+                        sb.AppendLine($"   ⚠️ Эти данные НЕ ВИДНЫ в свойствах изображения");
+                    }
+                    else
+                    {
+                        sb.AppendLine($"🔒 Скрытых данных не обнаружено.");
+                    }
+                    sb.AppendLine("───────────────────────────────────────────────────────────────────────");
+                    sb.AppendLine();
+                }
+
+                // Показываем EXIF поля для информации (через MetadataExtractor)
+                try
+                {
+                    var directories = ImageMetadataReader.ReadMetadata(imagePath);
+                    sb.AppendLine($"📁 EXIF поля (для справки):");
+                    foreach (var directory in directories)
+                    {
+                        sb.AppendLine($"   📂 {directory.Name}");
+                        foreach (var tag in directory.Tags)
+                        {
+                            string value = tag.Description ?? "<пусто>";
+                            if (value.Length > 80) value = value.Substring(0, 80) + "...";
+                            sb.AppendLine($"      🔹 {tag.Name}: {value}");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    sb.AppendLine($"⚠️ Не удалось прочитать EXIF: {ex.Message}");
+                }
+
+                return sb.ToString();
             }
-
-            // Создаём новый (через рефлексию, так как конструктор PropertyItem protected)
-            Type type = typeof(PropertyItem);
-            PropertyItem newProp = (PropertyItem)Activator.CreateInstance(type, true);
-            newProp.Id = id;
-            newProp.Type = 2; // ASCII
-            return newProp;
+            catch (Exception ex)
+            {
+                return $"Ошибка: {ex.Message}";
+            }
         }
-
-        // Для отладки: показать последние извлечённые данные
-        public string GetLastExtractedData() => _lastExtractedData;
     }
 }

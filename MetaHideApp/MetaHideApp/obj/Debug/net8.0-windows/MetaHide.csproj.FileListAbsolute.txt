@@ -32,3 +32,11 @@ C:\Users\Ame\Source\Repos\MetaHide\MetaHideApp\MetaHideApp\obj\Debug\net8.0-wind
 C:\Users\Ame\Source\Repos\MetaHide\MetaHideApp\MetaHideApp\obj\Debug\net8.0-windows\MetaHide.pdb
 C:\Users\Ame\Source\Repos\MetaHide\MetaHideApp\MetaHideApp\obj\Debug\net8.0-windows\MetaHide.genruntimeconfig.cache
 C:\Users\Ame\Source\Repos\MetaHide\MetaHideApp\MetaHideApp\obj\Debug\net8.0-windows\ref\MetaHide.dll
+C:\Users\Ame\Source\Repos\MetaHide\MetaHideApp\MetaHideApp\obj\Debug\net8.0-windows\MetaHide.csproj.AssemblyReference.cache
+C:\Users\Ame\Source\Repos\MetaHide\MetaHideApp\MetaHideApp\bin\Debug\net8.0-windows\MedallionShell.dll
+C:\Users\Ame\Source\Repos\MetaHide\MetaHideApp\MetaHideApp\bin\Debug\net8.0-windows\NExifTool.dll
+C:\Users\Ame\Source\Repos\MetaHide\MetaHideApp\MetaHideApp\obj\Debug\net8.0-windows\MetaHide.csproj.Up2Date
+C:\Users\Ame\Source\Repos\MetaHide\MetaHideApp\MetaHideApp\bin\Debug\net8.0-windows\ExifLibrary.dll
+C:\Users\Ame\Source\Repos\MetaHide\MetaHideApp\MetaHideApp\bin\Debug\net8.0-windows\MetadataExtractor.dll
+C:\Users\Ame\Source\Repos\MetaHide\MetaHideApp\MetaHideApp\bin\Debug\net8.0-windows\XmpCore.dll
+C:\Users\Ame\Source\Repos\MetaHide\MetaHideApp\MetaHideApp\bin\Debug\net8.0-windows\ExifMetadata.dll

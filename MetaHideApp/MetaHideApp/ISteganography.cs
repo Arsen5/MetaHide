@@ -4,13 +4,22 @@ namespace test
 {
     public interface ISteganography
     {
-        // Скрыть данные в изображении
-        void HideData(string imagePath, string data);
+        // Установить режим (true = скрытый, false = видимый)
+        void SetHiddenMode(bool hidden);
 
-        // Извлечь данные из изображения
-        string ExtractData(string imagePath);
+        // Получить текущий ID поля
+        int GetCurrentFieldId();
+
+        // Скрыть данные (возвращает успех, сообщение, путь к выходному файлу)
+        (bool success, string message, string outputPath) HideData(string imagePath, string data);
+
+        // Извлечь данные (возвращает успех, сообщение, данные)
+        (bool success, string message, string data) ExtractData(string imagePath);
 
         // Проверить, есть ли скрытые данные
         bool HasHiddenData(string imagePath);
+
+        // Получить все EXIF поля (для отладки)
+        string GetAllExifFields(string imagePath);
     }
 }

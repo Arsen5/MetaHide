@@ -1,20 +1,28 @@
-﻿// Form1.cs (добавьте элементы управления)
-using MetaHide;
-using System;
+﻿using System;
 using System.Windows.Forms;
 
 namespace test
 {
     public partial class Form1 : Form
     {
-        // Временные элементы для тестирования
+        // События для Controller
+        public event Action<string, string> HideRequested;
+        public event Action<string> ExtractRequested;
+        public event Action<string> ShowAllFieldsRequested;
+        public event Action<bool> ModeChangedRequested;
+
+        // Элементы управления
         private Button btnSelectImage;
         private Button btnHide;
         private Button btnExtract;
-        private Button btnShowAllFields;  // ← НОВАЯ КНОПКА
+        private Button btnShowAllFields;
         private TextBox txtText;
         private RichTextBox txtResult;
         private Label lblStatus;
+        private RadioButton rbVisibleMode;
+        private RadioButton rbHiddenMode;
+
+        private string _selectedImagePath = "";
 
         public Form1()
         {
@@ -22,56 +30,130 @@ namespace test
             CreateTestControls();
         }
 
+        public void ShowExtractedData(string data)
+        {
+            txtResult.Text = data;
+        }
+
+        public void UpdateStatus(string message)
+        {
+            lblStatus.Text = message;
+        }
+
         private void CreateTestControls()
         {
             // Кнопка выбора изображения
-            btnSelectImage = new Button { Text = "Выбрать изображение", Location = new System.Drawing.Point(12, 12), Size = new System.Drawing.Size(150, 30) };
+            btnSelectImage = new Button
+            {
+                Text = "Выбрать изображение",
+                Location = new System.Drawing.Point(12, 12),
+                Size = new System.Drawing.Size(150, 30)
+            };
             btnSelectImage.Click += BtnSelectImage_Click;
 
             // Поле для текста
-            txtText = new TextBox { Location = new System.Drawing.Point(12, 50), Size = new System.Drawing.Size(400, 100), Multiline = true };
-            txtText.Text = "Введите текст (минимум 1 Кб)...\n" + new string('A', 1024); // Заглушка на 1 Кб
+            txtText = new TextBox
+            {
+                Location = new System.Drawing.Point(12, 50),
+                Size = new System.Drawing.Size(400, 100),
+                Multiline = true
+            };
+
+            // Режимы работы
+            rbVisibleMode = new RadioButton
+            {
+                Text = "Обычный режим (видно в свойствах)",
+                Location = new System.Drawing.Point(12, 160),
+                Size = new System.Drawing.Size(200, 25),
+                Checked = true
+            };
+            rbVisibleMode.CheckedChanged += RbVisibleMode_CheckedChanged;
+
+            rbHiddenMode = new RadioButton
+            {
+                Text = "Скрытый режим (не видно в свойствах)",
+                Location = new System.Drawing.Point(12, 185),
+                Size = new System.Drawing.Size(200, 25)
+            };
+            rbHiddenMode.CheckedChanged += RbHiddenMode_CheckedChanged;
 
             // Кнопка "Спрятать"
-            btnHide = new Button { Text = "Спрятать в EXIF", Location = new System.Drawing.Point(12, 160), Size = new System.Drawing.Size(150, 30) };
+            btnHide = new Button
+            {
+                Text = "Спрятать в EXIF",
+                Location = new System.Drawing.Point(12, 220),
+                Size = new System.Drawing.Size(150, 30)
+            };
             btnHide.Click += BtnHide_Click;
 
             // Кнопка "Извлечь"
-            btnExtract = new Button { Text = "Извлечь из EXIF", Location = new System.Drawing.Point(170, 160), Size = new System.Drawing.Size(150, 30) };
+            btnExtract = new Button
+            {
+                Text = "Извлечь из EXIF",
+                Location = new System.Drawing.Point(170, 220),
+                Size = new System.Drawing.Size(150, 30)
+            };
             btnExtract.Click += BtnExtract_Click;
 
-            // НОВАЯ КНОПКА: "Показать все поля"
+            // Кнопка "Показать все поля"
             btnShowAllFields = new Button
             {
-                Text = "🔍 Показать все поля",
-                Location = new System.Drawing.Point(330, 160),
+                Text = "Показать все поля",
+                Location = new System.Drawing.Point(330, 220),
                 Size = new System.Drawing.Size(150, 30)
             };
             btnShowAllFields.Click += BtnShowAllFields_Click;
 
             // Поле для результата
-            txtResult = new RichTextBox { Location = new System.Drawing.Point(12, 200), Size = new System.Drawing.Size(600, 150), ReadOnly = true };
+            txtResult = new RichTextBox
+            {
+                Location = new System.Drawing.Point(12, 260),
+                Size = new System.Drawing.Size(650, 180),
+                ReadOnly = true,
+                Font = new System.Drawing.Font("Consolas", 9)
+            };
 
             // Статус
-            lblStatus = new Label { Text = "Готов", Location = new System.Drawing.Point(12, 360), Size = new System.Drawing.Size(600, 20) };
+            lblStatus = new Label
+            {
+                Text = "Готов",
+                Location = new System.Drawing.Point(12, 450),
+                Size = new System.Drawing.Size(600, 20)
+            };
 
             // Добавляем на форму
             Controls.Add(btnSelectImage);
             Controls.Add(txtText);
+            Controls.Add(rbVisibleMode);
+            Controls.Add(rbHiddenMode);
             Controls.Add(btnHide);
             Controls.Add(btnExtract);
-            Controls.Add(btnShowAllFields);  // ← ДОБАВЛЯЕМ НОВУЮ КНОПКУ
+            Controls.Add(btnShowAllFields);
             Controls.Add(txtResult);
             Controls.Add(lblStatus);
+
+            this.Size = new System.Drawing.Size(700, 520);
+            this.Text = "MetaHide - Стеганография в EXIF";
         }
 
-        private string _selectedImagePath = "";
+        private void RbVisibleMode_CheckedChanged(object sender, EventArgs e)
+        {
+            if (rbVisibleMode.Checked)
+                ModeChangedRequested?.Invoke(false);
+        }
+
+        private void RbHiddenMode_CheckedChanged(object sender, EventArgs e)
+        {
+            if (rbHiddenMode.Checked)
+                ModeChangedRequested?.Invoke(true);
+        }
 
         private void BtnSelectImage_Click(object sender, EventArgs e)
         {
             using (OpenFileDialog ofd = new OpenFileDialog())
             {
-                ofd.Filter = "Изображения|*.jpg;*.jpeg;*.png";
+                ofd.Filter = "Изображения|*.jpg;*.jpeg";
+                ofd.Title = "Выберите изображение";
                 if (ofd.ShowDialog() == DialogResult.OK)
                 {
                     _selectedImagePath = ofd.FileName;
@@ -88,16 +170,9 @@ namespace test
                 return;
             }
 
-            if (txtText.Text.Length < 1024)
-            {
-                MessageBox.Show($"Текст слишком короткий! Нужно минимум 1024 символа. Сейчас: {txtText.Text.Length} символов.\n\nДобавьте текст или используйте кнопку 'Сгенерировать 1 Кб'");
-                return;
-            }
 
             lblStatus.Text = "Скрываю данные...";
-            var model = new Model(); // Временно напрямую, потом через Controller
-            model.HideData(_selectedImagePath, txtText.Text);
-            lblStatus.Text = "Готово";
+            HideRequested?.Invoke(_selectedImagePath, txtText.Text);
         }
 
         private void BtnExtract_Click(object sender, EventArgs e)
@@ -109,13 +184,9 @@ namespace test
             }
 
             lblStatus.Text = "Извлекаю данные...";
-            var model = new Model();
-            string extracted = model.ExtractData(_selectedImagePath);
-            txtResult.Text = extracted;
-            lblStatus.Text = "Извлечение завершено";
+            ExtractRequested?.Invoke(_selectedImagePath);
         }
 
-        // НОВЫЙ ОБРАБОТЧИК для кнопки "Показать все поля"
         private void BtnShowAllFields_Click(object sender, EventArgs e)
         {
             if (string.IsNullOrEmpty(_selectedImagePath))
@@ -125,22 +196,7 @@ namespace test
             }
 
             lblStatus.Text = "Читаю EXIF поля...";
-            var model = new Model();
-            string result = model.GetAllExifFields(_selectedImagePath);
-            txtResult.Text = result;
-
-            // Подсчитываем количество полей для статуса
-            int fieldCount = result.Split(new[] { "🔹" }, StringSplitOptions.None).Length - 1;
-            lblStatus.Text = $"Готово. Найдено {fieldCount} полей";
-        }
-
-        // События для Controller (если используете)
-        public event Action<string, string> HideRequested;
-        public event Action<string> ExtractRequested;
-
-        public void ShowExtractedData(string data)
-        {
-            txtResult.Text = data;
+            ShowAllFieldsRequested?.Invoke(_selectedImagePath);
         }
     }
 }
