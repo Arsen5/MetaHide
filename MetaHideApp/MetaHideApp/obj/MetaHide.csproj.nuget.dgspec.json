@@ -1,24 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\orlow\\OneDrive\\Рабочий стол\\OurProject\\MetaHide\\MetaHideApp\\MetaHideApp\\MetaHide.csproj": {}
+    "C:\\Users\\Ame\\Source\\Repos\\MetaHide\\MetaHideApp\\MetaHideApp\\MetaHide.csproj": {}
   },
   "projects": {
-    "C:\\Users\\orlow\\OneDrive\\Рабочий стол\\OurProject\\MetaHide\\MetaHideApp\\MetaHideApp\\MetaHide.csproj": {
+    "C:\\Users\\Ame\\Source\\Repos\\MetaHide\\MetaHideApp\\MetaHideApp\\MetaHide.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\orlow\\OneDrive\\Рабочий стол\\OurProject\\MetaHide\\MetaHideApp\\MetaHideApp\\MetaHide.csproj",
+        "projectUniqueName": "C:\\Users\\Ame\\Source\\Repos\\MetaHide\\MetaHideApp\\MetaHideApp\\MetaHide.csproj",
         "projectName": "MetaHide",
-        "projectPath": "C:\\Users\\orlow\\OneDrive\\Рабочий стол\\OurProject\\MetaHide\\MetaHideApp\\MetaHideApp\\MetaHide.csproj",
-        "packagesPath": "C:\\Users\\orlow\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\orlow\\OneDrive\\Рабочий стол\\OurProject\\MetaHide\\MetaHideApp\\MetaHideApp\\obj\\",
+        "projectPath": "C:\\Users\\Ame\\Source\\Repos\\MetaHide\\MetaHideApp\\MetaHideApp\\MetaHide.csproj",
+        "packagesPath": "C:\\Users\\Ame\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Ame\\Source\\Repos\\MetaHide\\MetaHideApp\\MetaHideApp\\obj\\",
         "projectStyle": "PackageReference",
-        "fallbackFolders": [
-          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-        ],
         "configFilePaths": [
-          "C:\\Users\\orlow\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Users\\Ame\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
@@ -68,7 +64,7 @@
               "privateAssets": "none"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.311/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.306/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

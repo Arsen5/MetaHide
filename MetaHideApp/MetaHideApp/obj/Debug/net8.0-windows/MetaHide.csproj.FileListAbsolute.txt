@@ -15,3 +15,20 @@ C:\Users\orlow\OneDrive\Рабочий стол\OurProject\MetaHideApp\MetaHideA
 C:\Users\orlow\OneDrive\Рабочий стол\OurProject\MetaHideApp\MetaHideApp\obj\Debug\net8.0-windows\MetaHide.pdb
 C:\Users\orlow\OneDrive\Рабочий стол\OurProject\MetaHideApp\MetaHideApp\obj\Debug\net8.0-windows\MetaHide.genruntimeconfig.cache
 C:\Users\orlow\OneDrive\Рабочий стол\OurProject\MetaHideApp\MetaHideApp\obj\Debug\net8.0-windows\ref\MetaHide.dll
+C:\Users\Ame\Source\Repos\MetaHide\MetaHideApp\MetaHideApp\bin\Debug\net8.0-windows\MetaHide.exe
+C:\Users\Ame\Source\Repos\MetaHide\MetaHideApp\MetaHideApp\bin\Debug\net8.0-windows\MetaHide.deps.json
+C:\Users\Ame\Source\Repos\MetaHide\MetaHideApp\MetaHideApp\bin\Debug\net8.0-windows\MetaHide.runtimeconfig.json
+C:\Users\Ame\Source\Repos\MetaHide\MetaHideApp\MetaHideApp\bin\Debug\net8.0-windows\MetaHide.dll
+C:\Users\Ame\Source\Repos\MetaHide\MetaHideApp\MetaHideApp\bin\Debug\net8.0-windows\MetaHide.pdb
+C:\Users\Ame\Source\Repos\MetaHide\MetaHideApp\MetaHideApp\obj\Debug\net8.0-windows\test.Form1.resources
+C:\Users\Ame\Source\Repos\MetaHide\MetaHideApp\MetaHideApp\obj\Debug\net8.0-windows\MetaHide.csproj.GenerateResource.cache
+C:\Users\Ame\Source\Repos\MetaHide\MetaHideApp\MetaHideApp\obj\Debug\net8.0-windows\MetaHide.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Ame\Source\Repos\MetaHide\MetaHideApp\MetaHideApp\obj\Debug\net8.0-windows\MetaHide.AssemblyInfoInputs.cache
+C:\Users\Ame\Source\Repos\MetaHide\MetaHideApp\MetaHideApp\obj\Debug\net8.0-windows\MetaHide.AssemblyInfo.cs
+C:\Users\Ame\Source\Repos\MetaHide\MetaHideApp\MetaHideApp\obj\Debug\net8.0-windows\MetaHide.csproj.CoreCompileInputs.cache
+C:\Users\Ame\Source\Repos\MetaHide\MetaHideApp\MetaHideApp\obj\Debug\net8.0-windows\MetaHide.sourcelink.json
+C:\Users\Ame\Source\Repos\MetaHide\MetaHideApp\MetaHideApp\obj\Debug\net8.0-windows\MetaHide.dll
+C:\Users\Ame\Source\Repos\MetaHide\MetaHideApp\MetaHideApp\obj\Debug\net8.0-windows\refint\MetaHide.dll
+C:\Users\Ame\Source\Repos\MetaHide\MetaHideApp\MetaHideApp\obj\Debug\net8.0-windows\MetaHide.pdb
+C:\Users\Ame\Source\Repos\MetaHide\MetaHideApp\MetaHideApp\obj\Debug\net8.0-windows\MetaHide.genruntimeconfig.cache
+C:\Users\Ame\Source\Repos\MetaHide\MetaHideApp\MetaHideApp\obj\Debug\net8.0-windows\ref\MetaHide.dll
