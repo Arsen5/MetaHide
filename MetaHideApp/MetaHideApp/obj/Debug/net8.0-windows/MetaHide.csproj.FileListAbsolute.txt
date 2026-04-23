@@ -40,3 +40,28 @@ C:\Users\Ame\Source\Repos\MetaHide\MetaHideApp\MetaHideApp\bin\Debug\net8.0-wind
 C:\Users\Ame\Source\Repos\MetaHide\MetaHideApp\MetaHideApp\bin\Debug\net8.0-windows\MetadataExtractor.dll
 C:\Users\Ame\Source\Repos\MetaHide\MetaHideApp\MetaHideApp\bin\Debug\net8.0-windows\XmpCore.dll
 C:\Users\Ame\Source\Repos\MetaHide\MetaHideApp\MetaHideApp\bin\Debug\net8.0-windows\ExifMetadata.dll
+C:\Users\orlow\OneDrive\Рабочий стол\OurProject\MetaHide\MetaHideApp\MetaHideApp\bin\Debug\net8.0-windows\MetaHide.exe
+C:\Users\orlow\OneDrive\Рабочий стол\OurProject\MetaHide\MetaHideApp\MetaHideApp\bin\Debug\net8.0-windows\MetaHide.deps.json
+C:\Users\orlow\OneDrive\Рабочий стол\OurProject\MetaHide\MetaHideApp\MetaHideApp\bin\Debug\net8.0-windows\MetaHide.runtimeconfig.json
+C:\Users\orlow\OneDrive\Рабочий стол\OurProject\MetaHide\MetaHideApp\MetaHideApp\bin\Debug\net8.0-windows\MetaHide.dll
+C:\Users\orlow\OneDrive\Рабочий стол\OurProject\MetaHide\MetaHideApp\MetaHideApp\bin\Debug\net8.0-windows\MetaHide.pdb
+C:\Users\orlow\OneDrive\Рабочий стол\OurProject\MetaHide\MetaHideApp\MetaHideApp\bin\Debug\net8.0-windows\ExifLibrary.dll
+C:\Users\orlow\OneDrive\Рабочий стол\OurProject\MetaHide\MetaHideApp\MetaHideApp\bin\Debug\net8.0-windows\ExifMetadata.dll
+C:\Users\orlow\OneDrive\Рабочий стол\OurProject\MetaHide\MetaHideApp\MetaHideApp\bin\Debug\net8.0-windows\MedallionShell.dll
+C:\Users\orlow\OneDrive\Рабочий стол\OurProject\MetaHide\MetaHideApp\MetaHideApp\bin\Debug\net8.0-windows\MetadataExtractor.dll
+C:\Users\orlow\OneDrive\Рабочий стол\OurProject\MetaHide\MetaHideApp\MetaHideApp\bin\Debug\net8.0-windows\NExifTool.dll
+C:\Users\orlow\OneDrive\Рабочий стол\OurProject\MetaHide\MetaHideApp\MetaHideApp\bin\Debug\net8.0-windows\XmpCore.dll
+C:\Users\orlow\OneDrive\Рабочий стол\OurProject\MetaHide\MetaHideApp\MetaHideApp\obj\Debug\net8.0-windows\MetaHide.csproj.AssemblyReference.cache
+C:\Users\orlow\OneDrive\Рабочий стол\OurProject\MetaHide\MetaHideApp\MetaHideApp\obj\Debug\net8.0-windows\test.Form1.resources
+C:\Users\orlow\OneDrive\Рабочий стол\OurProject\MetaHide\MetaHideApp\MetaHideApp\obj\Debug\net8.0-windows\MetaHide.csproj.GenerateResource.cache
+C:\Users\orlow\OneDrive\Рабочий стол\OurProject\MetaHide\MetaHideApp\MetaHideApp\obj\Debug\net8.0-windows\MetaHide.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\orlow\OneDrive\Рабочий стол\OurProject\MetaHide\MetaHideApp\MetaHideApp\obj\Debug\net8.0-windows\MetaHide.AssemblyInfoInputs.cache
+C:\Users\orlow\OneDrive\Рабочий стол\OurProject\MetaHide\MetaHideApp\MetaHideApp\obj\Debug\net8.0-windows\MetaHide.AssemblyInfo.cs
+C:\Users\orlow\OneDrive\Рабочий стол\OurProject\MetaHide\MetaHideApp\MetaHideApp\obj\Debug\net8.0-windows\MetaHide.csproj.CoreCompileInputs.cache
+C:\Users\orlow\OneDrive\Рабочий стол\OurProject\MetaHide\MetaHideApp\MetaHideApp\obj\Debug\net8.0-windows\MetaHide.sourcelink.json
+C:\Users\orlow\OneDrive\Рабочий стол\OurProject\MetaHide\MetaHideApp\MetaHideApp\obj\Debug\net8.0-windows\MetaHide.csproj.Up2Date
+C:\Users\orlow\OneDrive\Рабочий стол\OurProject\MetaHide\MetaHideApp\MetaHideApp\obj\Debug\net8.0-windows\MetaHide.dll
+C:\Users\orlow\OneDrive\Рабочий стол\OurProject\MetaHide\MetaHideApp\MetaHideApp\obj\Debug\net8.0-windows\refint\MetaHide.dll
+C:\Users\orlow\OneDrive\Рабочий стол\OurProject\MetaHide\MetaHideApp\MetaHideApp\obj\Debug\net8.0-windows\MetaHide.pdb
+C:\Users\orlow\OneDrive\Рабочий стол\OurProject\MetaHide\MetaHideApp\MetaHideApp\obj\Debug\net8.0-windows\MetaHide.genruntimeconfig.cache
+C:\Users\orlow\OneDrive\Рабочий стол\OurProject\MetaHide\MetaHideApp\MetaHideApp\obj\Debug\net8.0-windows\ref\MetaHide.dll

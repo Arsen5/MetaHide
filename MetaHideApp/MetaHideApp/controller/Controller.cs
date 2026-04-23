@@ -1,16 +1,19 @@
-﻿using System.Windows.Forms;
+﻿using MetaHide.model;
+using System.Windows.Forms;
 using test;
 
-namespace MetaHide
+using View = MetaHide.view.View;
+
+namespace MetaHide.controller
 {
     internal class Controller
     {
         private Model _model;
-        private Form1 _view;
+        private View _view;
 
-        public Controller(Form1 view)
+        public Controller(View view, Model model)
         {
-            _model = new Model();
+            _model = model;
             _view = view;
 
             // Подписываемся на события формы
@@ -27,7 +30,7 @@ namespace MetaHide
             if (result.success)
             {
                 MessageBox.Show(result.message, "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                _view.UpdateStatus($"Готово! Сохранено: {System.IO.Path.GetFileName(result.outputPath)}");
+                _view.UpdateStatus($"Готово! Сохранено: {Path.GetFileName(result.outputPath)}");
             }
             else
             {
@@ -57,7 +60,7 @@ namespace MetaHide
             string result = _model.GetAllExifFields(imagePath);
             _view.ShowExtractedData(result);
 
-            int fieldCount = result.Split(new[] { "🔹" }, System.StringSplitOptions.None).Length - 1;
+            int fieldCount = result.Split(new[] { "🔹" }, StringSplitOptions.None).Length - 1;
             _view.UpdateStatus($"Найдено {fieldCount} полей");
         }
 

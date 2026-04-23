@@ -6,8 +6,9 @@ using System.IO;
 using System.Linq;
 using MetadataExtractor;
 using MetadataExtractor.Formats.Exif;
+using test;
 
-namespace test
+namespace MetaHide.model
 {
     internal class Model : ISteganography
     {
