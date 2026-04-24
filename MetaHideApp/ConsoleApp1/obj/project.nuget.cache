@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "saZjMexRUDg=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\Ame\\Source\\Repos\\MetaHide\\MetaHideApp\\ConsoleApp1\\ConsoleApp1.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Ame\\.nuget\\packages\\microsoft.win32.systemevents\\10.0.7\\microsoft.win32.systemevents.10.0.7.nupkg.sha512",
+    "C:\\Users\\Ame\\.nuget\\packages\\system.drawing.common\\10.0.7\\system.drawing.common.10.0.7.nupkg.sha512"
+  ],
+  "logs": []
+}
