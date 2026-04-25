@@ -4891,9 +4891,9 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Ame\\source\\repos\\MetaHide\\MetaHideApp\\MetaHideApp\\MetaHide.csproj",
+      "projectUniqueName": "C:\\Users\\Ame\\Source\\Repos\\MetaHide\\MetaHideApp\\MetaHideApp\\MetaHide.csproj",
       "projectName": "MetaHide",
-      "projectPath": "C:\\Users\\Ame\\source\\repos\\MetaHide\\MetaHideApp\\MetaHideApp\\MetaHide.csproj",
+      "projectPath": "C:\\Users\\Ame\\Source\\Repos\\MetaHide\\MetaHideApp\\MetaHideApp\\MetaHide.csproj",
       "packagesPath": "C:\\Users\\Ame\\.nuget\\packages\\",
       "outputPath": "C:\\Users\\Ame\\source\\repos\\MetaHide\\MetaHideApp\\MetaHideApp\\obj\\",
       "projectStyle": "PackageReference",

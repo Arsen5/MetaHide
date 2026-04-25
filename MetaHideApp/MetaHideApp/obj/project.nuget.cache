@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "1lnWH4gVCLw=",
+  "dgSpecHash": "lkMrGzfM07Q=",
   "success": true,
-  "projectFilePath": "C:\\Users\\Ame\\source\\repos\\MetaHide\\MetaHideApp\\MetaHideApp\\MetaHide.csproj",
+  "projectFilePath": "C:\\Users\\Ame\\Source\\Repos\\MetaHide\\MetaHideApp\\MetaHideApp\\MetaHide.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Ame\\.nuget\\packages\\exiflibnet\\2.1.4\\exiflibnet.2.1.4.nupkg.sha512",
     "C:\\Users\\Ame\\.nuget\\packages\\exifmetadata\\1.0.0.1\\exifmetadata.1.0.0.1.nupkg.sha512",
@@ -91,9 +91,9 @@
       "code": "NU1701",
       "level": "Warning",
       "message": "Пакет \"ExifMetadata 1.0.0.1\" был восстановлен с помощью \".NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1\", а не целевой платформы проекта \"net8.0-windows7.0\". Этот пакет может быть не полностью совместим с вашим проектом.",
-      "projectPath": "C:\\Users\\Ame\\source\\repos\\MetaHide\\MetaHideApp\\MetaHideApp\\MetaHide.csproj",
+      "projectPath": "C:\\Users\\Ame\\Source\\Repos\\MetaHide\\MetaHideApp\\MetaHideApp\\MetaHide.csproj",
       "warningLevel": 1,
-      "filePath": "C:\\Users\\Ame\\source\\repos\\MetaHide\\MetaHideApp\\MetaHideApp\\MetaHide.csproj",
+      "filePath": "C:\\Users\\Ame\\Source\\Repos\\MetaHide\\MetaHideApp\\MetaHideApp\\MetaHide.csproj",
       "libraryId": "ExifMetadata",
       "targetGraphs": [
         "net8.0-windows7.0"

@@ -69,25 +69,7 @@ namespace MetaHide.view
                 AutoSize = true,
             };
 
-            // ========== РАДИОКНОПКИ (добавлено, но место не сдвинуто) ==========
-            rbVisibleMode = new RadioButton
-            {
-                Text = "Обычный режим (видно в свойствах)",
-                Location = new Point(30, 280),
-                Size = new Size(250, 25),
-                Checked = true,
-                Font = new Font("Inter", 9)
-            };
-            rbVisibleMode.CheckedChanged += (s, e) => ModeChangedRequested?.Invoke(false);
 
-            rbHiddenMode = new RadioButton
-            {
-                Text = "Скрытый режим (не видно в свойствах)",
-                Location = new Point(30, 305),
-                Size = new Size(250, 25),
-                Font = new Font("Inter", 9)
-            };
-            rbHiddenMode.CheckedChanged += (s, e) => ModeChangedRequested?.Invoke(true);
 
             // ========== ПОЛЯ ВВОДА (немного сдвинуты из-за радиокнопок) ==========
             txtText = new TextBox

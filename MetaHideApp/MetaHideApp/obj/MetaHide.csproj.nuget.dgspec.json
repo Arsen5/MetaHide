@@ -1,15 +1,15 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\Ame\\source\\repos\\MetaHide\\MetaHideApp\\MetaHideApp\\MetaHide.csproj": {}
+    "C:\\Users\\Ame\\Source\\Repos\\MetaHide\\MetaHideApp\\MetaHideApp\\MetaHide.csproj": {}
   },
   "projects": {
-    "C:\\Users\\Ame\\source\\repos\\MetaHide\\MetaHideApp\\MetaHideApp\\MetaHide.csproj": {
+    "C:\\Users\\Ame\\Source\\Repos\\MetaHide\\MetaHideApp\\MetaHideApp\\MetaHide.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Ame\\source\\repos\\MetaHide\\MetaHideApp\\MetaHideApp\\MetaHide.csproj",
+        "projectUniqueName": "C:\\Users\\Ame\\Source\\Repos\\MetaHide\\MetaHideApp\\MetaHideApp\\MetaHide.csproj",
         "projectName": "MetaHide",
-        "projectPath": "C:\\Users\\Ame\\source\\repos\\MetaHide\\MetaHideApp\\MetaHideApp\\MetaHide.csproj",
+        "projectPath": "C:\\Users\\Ame\\Source\\Repos\\MetaHide\\MetaHideApp\\MetaHideApp\\MetaHide.csproj",
         "packagesPath": "C:\\Users\\Ame\\.nuget\\packages\\",
         "outputPath": "C:\\Users\\Ame\\source\\repos\\MetaHide\\MetaHideApp\\MetaHideApp\\obj\\",
         "projectStyle": "PackageReference",
