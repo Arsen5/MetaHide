@@ -108,14 +108,14 @@ namespace MetaHide.view
             dropPanel.DragDrop += (s, e) =>
             {
                 var files = (string[])e.Data.GetData(DataFormats.FileDrop);
-                if (files != null && files.Length > 0 && (files[0].EndsWith(".jpg") || files[0].EndsWith(".jpeg")))
+                if (files != null && files.Length > 0 && (files[0].EndsWith(".jpg") || files[0].EndsWith(".jpeg") || files[0].EndsWith(".png")))
                 {
-                    SetSelectedImagePath(files[0]);
+                    _selectedImagePath = files[0];
                     UpdateStatus($"Выбран файл: {System.IO.Path.GetFileName(files[0])}");
                 }
                 else
                 {
-                    UpdateStatus("Пожалуйста, выберите JPG файл");
+                    UpdateStatus("Пожалуйста, выберите JPG или PNG файл");
                 }
             };
 
@@ -260,7 +260,7 @@ namespace MetaHide.view
         {
             using (OpenFileDialog ofd = new OpenFileDialog())
             {
-                ofd.Filter = "JPEG изображения|*.jpg;*.jpeg";
+                ofd.Filter = "Изображения|*.jpg;*.jpeg;*.png";
                 ofd.Title = "Выберите изображение";
                 if (ofd.ShowDialog() == DialogResult.OK)
                 {

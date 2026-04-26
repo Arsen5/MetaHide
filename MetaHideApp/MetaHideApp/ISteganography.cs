@@ -21,5 +21,7 @@ namespace test
 
         // Получить все EXIF поля (для отладки)
         string GetAllExifFields(string imagePath);
+        // для разных форматов
+        bool SupportsFormat(string filePath);
     }
 }
