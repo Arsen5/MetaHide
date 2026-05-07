@@ -90,6 +90,7 @@ public class JpegSteganography : ISteganography
                                 Array.Copy(data, i + dataOffset, extracted, 0, dataLen);
                                 string result = Encoding.UTF8.GetString(extracted).TrimEnd('\0');
                                 return (true, $"Извлечено {dataLen} байт", result);
+
                             }
                         }
                     }

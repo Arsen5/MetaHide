@@ -63,6 +63,7 @@ namespace MetaHide.controller
 
             if (result.success)
             {
+                _view.TextWindow();
                 _view.ShowExtractedData(result.data);
                 _view.UpdateStatus(result.message);
             }
@@ -72,19 +73,6 @@ namespace MetaHide.controller
                 _view.UpdateStatus(result.message);
                 MessageBox.Show(result.message, "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
-        }
-
-        private void OnShowAllFieldsRequested(string imagePath)
-        {
-            if (string.IsNullOrEmpty(imagePath))
-            {
-                MessageBox.Show("Сначала выберите изображение!", "Внимание", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            string result = _model.GetAllExifFields(imagePath);
-            _view.ShowExtractedData(result);
-            _view.UpdateStatus("Анализ завершён");
         }
 
         private void OnModeChangedRequested(bool isHidden)

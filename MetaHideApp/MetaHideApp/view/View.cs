@@ -21,8 +21,7 @@ public partial class View
     private Button? btnHide;
     private Button? btnExtract;
     //private Button? btnShowAllFields;
-    private TextBox? txtText;
-    private TextBox? txtResult;
+    private TextBox? txt;
     private Label? lblStatus;
     private RadioButton? rbVisibleMode;
     private RadioButton? rbHiddenMode;
@@ -54,8 +53,8 @@ public partial class View
 
     public void ShowExtractedData(string data)
     {
-        if (txtResult != null)
-            txtResult.Invoke((MethodInvoker)(() => txtResult.Text = data));
+        if (txt != null)
+            txt.Invoke((MethodInvoker)(() => txt.Text = data));
     }
 
     public string GetSelectedImagePath() => _selectedImagePath;
