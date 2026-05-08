@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Windows.Forms;
+
+using System.ComponentModel;
 
 namespace MetaHide.view;
 
@@ -9,8 +12,25 @@ public partial class View
     public Panel MainPanel;
     public bool ChosenStatus;
     private Label cancel;
+    private MyCustomToggleBtn checkBox;
+    
+
     private void CreateInterface()
     {
+        var shifr = new Label
+        {
+            Location = new Point(30, 280),
+            AutoSize = true,
+            Text = "Использовать шифр?",
+            Font = new Font("Inter", 11, FontStyle.Bold),
+            ForeColor = Color.Gray
+        };
+        checkBox = new MyCustomToggleBtn
+        {
+            Size = new Size(50, 22),
+            Location = new Point(220, 280),
+            Cursor = Cursors.Hand,
+        };
         var header = new Panel
         {
             Dock = DockStyle.Top,
@@ -60,10 +80,12 @@ public partial class View
 
         var instr = new Label
         {
-            Location = new Point(20, 60),
+            Location = new Point(20, 50),
             Text = "Перетащите файл в поле справа или нажмите\n" +
             "«выбор файла», чтобы загрузить документ для\n" +
             "шифрования/расшифровки.\n" +
+            "Снизу нажмите кнопку\nЗашифровать/расшифровать.\n" +
+            "Выберите режим: шифровать сообщение или нет.\n" +
             "• Поддерживаемые форматы: .png, .jpg\n" +
             "• Максимум ??? МБ\n" +
             "• Конфиденциальность: локальная обработка\n",
@@ -108,6 +130,7 @@ public partial class View
             Font = new Font("Inter", 11),
             Size = new Size(160, 50),
             Location = new Point(305, 250),
+            Cursor = Cursors.Hand
         };
         btnSelectImage.Click += (s, e) => SelectFile();
 
@@ -157,7 +180,8 @@ public partial class View
             Font = new Font("Inter", 13),
             Size = new Size(500, 50),
             Location = new Point(38, 60),
-            FlatStyle = FlatStyle.Flat
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand
         };
         btnHide.Click += (s, e) =>
         {
@@ -177,7 +201,8 @@ public partial class View
             Font = new Font("Inter", 13),
             Size = new Size(550, 50),
             Location = new Point(593, 60),
-            FlatStyle = FlatStyle.Flat
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand
         };
         btnExtract.Click += (s, e) =>
         {
@@ -202,10 +227,9 @@ public partial class View
         footerFile.Controls.Add(t1);
         footerFile.Controls.Add(lblStatus);
 
-        
+        form.Controls.Add(shifr);
+        form.Controls.Add(checkBox);
         form.Controls.Add(MainPanel);
-        form.Controls.Add(rbHiddenMode);
-        form.Controls.Add(rbVisibleMode);
         form.Controls.Add(footer);
         form.Controls.Add(instruction);
         form.Controls.Add(header);
@@ -260,6 +284,7 @@ public partial class View
             Font = new Font("Inter", 11),
             Size = new Size(160, 50),
             Location = new Point(305, 250),
+            Cursor = Cursors.Hand
         };
         btnSelectImage.Click += (s, e) => SelectFile();
 
@@ -302,7 +327,9 @@ public partial class View
             var text = new Label
             {
                 Dock = DockStyle.Top,
-                Text = lblStatus.Text.Length - 13 >= 13 ? lblStatus.Text.Substring(13, 23) + "..." : lblStatus.Text.Substring(13),
+                Text = lblStatus.Text.Length > 36
+                   ? lblStatus.Text.Substring(13, 23) + "..."
+                   : (lblStatus.Text.Length > 13 ? lblStatus.Text.Substring(13) : ""),
                 Height = 50,
                 Font = new Font("Inter", 20),
                 ForeColor = Color.Black,

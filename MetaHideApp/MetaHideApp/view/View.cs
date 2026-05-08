@@ -13,18 +13,13 @@ public partial class View
     // События для Controller
     public event Action<string, string>? HideRequested;
     public event Action<string>? ExtractRequested;
-    //public event Action<string>? ShowAllFieldsRequested;
     public event Action<bool>? ModeChangedRequested;
 
-    // Элементы управления
     private Button? btnSelectImage;
     private Button? btnHide;
     private Button? btnExtract;
-    //private Button? btnShowAllFields;
     private TextBox? txt;
     private Label? lblStatus;
-    private RadioButton? rbVisibleMode;
-    private RadioButton? rbHiddenMode;
 
     private string _selectedImagePath = "";
 
