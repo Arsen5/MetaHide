@@ -129,9 +129,9 @@ public class PngSteganography : ISteganography
             // Формируем результат
             StringBuilder result = new StringBuilder();
             if (!string.IsNullOrEmpty(hiddenText))
-                result.AppendLine($"🔒 Скрытый режим: {hiddenText}");
+                result.AppendLine(hiddenText);
             if (!string.IsNullOrEmpty(visibleText))
-                result.AppendLine($"📄 Обычный режим: {visibleText}");
+                result.AppendLine(visibleText);
 
             if (result.Length > 0)
                 return (true, "Данные найдены", result.ToString().TrimEnd());

@@ -35,7 +35,6 @@ public class JpegSteganography : ISteganography
             {
                 using (Image img = Image.FromFile(imagePath))
                 {
-                    // Удаляем старое поле ImageDescription, если есть
                     PropertyItem prop = null;
                     foreach (PropertyItem p in img.PropertyItems)
                     {
@@ -50,13 +49,35 @@ public class JpegSteganography : ISteganography
                     {
                         prop = (PropertyItem)Activator.CreateInstance(typeof(PropertyItem), true);
                         prop.Id = 0x010E;
-                        prop.Type = 2;
+                        prop.Type = 2; // ASCII
                     }
 
-                    prop.Value = dataBytes;
-                    prop.Len = dataBytes.Length;
+                    // Добавляем терминальный ноль в конец
+                    byte[] dataWithNull = new byte[dataBytes.Length + 1];
+                    Array.Copy(dataBytes, 0, dataWithNull, 0, dataBytes.Length);
+                    dataWithNull[dataBytes.Length] = 0;
+
+                    prop.Value = dataWithNull;
+                    prop.Len = dataWithNull.Length;
                     img.SetPropertyItem(prop);
-                    img.Save(outputPath, ImageFormat.Jpeg);
+
+                    // Сохраняем с качеством 100%
+                    var encoderParams = new EncoderParameters(1);
+                    encoderParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 100L);
+                    ImageCodecInfo jpegCodec = null;
+                    foreach (ImageCodecInfo codec in ImageCodecInfo.GetImageEncoders())
+                    {
+                        if (codec.MimeType == "image/jpeg")
+                        {
+                            jpegCodec = codec;
+                            break;
+                        }
+                    }
+
+                    if (jpegCodec != null)
+                        img.Save(outputPath, jpegCodec, encoderParams);
+                    else
+                        img.Save(outputPath, ImageFormat.Jpeg);
                 }
                 return (true, $"Данные записаны в ImageDescription (видимый режим)", outputPath);
             }
@@ -76,7 +97,6 @@ public class JpegSteganography : ISteganography
                 ms.Write(cleanedBytes, eoiPos, cleanedBytes.Length - eoiPos);
                 File.WriteAllBytes(outputPath, ms.ToArray());
             }
-
             return (true, $"Данные скрыты в поле MakerNote (размер {dataBytes.Length} байт)", outputPath);
         }
         catch (Exception ex)
@@ -150,9 +170,9 @@ public class JpegSteganography : ISteganography
             // 3. Формируем результат
             StringBuilder result = new StringBuilder();
             if (!string.IsNullOrEmpty(makerNoteText))
-                result.AppendLine($"🔒 Скрытый режим (MakerNote): {makerNoteText}");
+                result.AppendLine(makerNoteText);
             if (!string.IsNullOrEmpty(imageDescriptionText))
-                result.AppendLine($"📄 Обычный режим (ImageDescription): {imageDescriptionText}");
+                result.AppendLine(imageDescriptionText);
 
             if (result.Length > 0)
                 return (true, "Данные найдены", result.ToString().TrimEnd());
@@ -170,7 +190,6 @@ public class JpegSteganography : ISteganography
         var result = ExtractData(imagePath);
         return result.success;
     }
-
     public string GetAllExifFields(string imagePath)
     {
         try
@@ -284,7 +303,6 @@ public class JpegSteganography : ISteganography
             // Исправляем offset
             ms.Seek(offsetPos, SeekOrigin.Begin);
             WriteUInt32(ms, (uint)dataStart, true);
-
             byte[] result = ms.ToArray();
             int totalLen = result.Length - 4;
             result[2] = (byte)((totalLen >> 8) & 0xFF);
