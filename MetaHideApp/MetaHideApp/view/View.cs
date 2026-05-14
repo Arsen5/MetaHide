@@ -32,6 +32,7 @@ public partial class View
         form.Text = "MetaHide";
         form.Icon = new Icon("_.ico");
         form.MaximizeBox = false;
+        form.FormBorderStyle = FormBorderStyle.FixedSingle;
         CreateInterface();
     }
 
