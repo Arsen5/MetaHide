@@ -19,16 +19,16 @@ public partial class View
     {
         var shifr = new Label
         {
-            Location = new Point(30, 280),
+            Location = new Point(30, 480),
             AutoSize = true,
-            Text = "Использовать шифр?",
+            Text = "Сделать данные скрытыми?",
             Font = new Font("Inter", 11, FontStyle.Bold),
             ForeColor = Color.Gray
         };
         checkBox = new MyCustomToggleBtn
         {
             Size = new Size(50, 22),
-            Location = new Point(220, 280),
+            Location = new Point(270, 480),
             Cursor = Cursors.Hand,
         };
         checkBox.CheckedChanged += (s, e) =>
@@ -68,11 +68,11 @@ public partial class View
 
         var instruction = new Panel
         {
-            Size = new Size(320, 200),
+            Size = new Size(320, 400),
             Location = new Point(30, 60),
             BackColor = Color.White,
             BorderStyle = BorderStyle.FixedSingle,
-            Padding = new Padding(20, 20, 20, 20)
+            Padding = new Padding(20, 10, 20, 20)
         };
 
         var label = new Label
@@ -86,15 +86,30 @@ public partial class View
 
         var instr = new Label
         {
-            Location = new Point(20, 50),
-            Text = "Перетащите файл в поле справа или нажмите\n" +
-            "«выбор файла», чтобы загрузить документ для\n" +
-            "шифрования/расшифровки.\n" +
-            "Снизу нажмите кнопку\nЗашифровать/расшифровать.\n" +
-            "Выберите режим: шифровать сообщение или нет.\n" +
-            "• Поддерживаемые форматы: .png, .jpg\n" +
-            "• Максимум ??? МБ\n" +
-            "• Конфиденциальность: локальная обработка\n",
+            Location = new Point(20, 40),
+            Text = "MetaHide позволяет безопасно скрывать\r\nтекстовые сообщения внутри графических\r\nфайлов (стеганография) и извлекать их\r\nобратно. Все операции происходят локально\r\nв вашем браузере.",
+            Font = new Font("Inter", 9),
+            ForeColor = ColorTranslator.FromHtml("#555555"),
+            AutoSize = true,
+        };
+
+        var label2 = new Label
+        {
+            Location = new Point(20, 120),
+            Text = "Как зашифровать или\r\nрасшифровать данные?",
+            Font = new Font("Inter", 9, FontStyle.Bold),
+            ForeColor = ColorTranslator.FromHtml("#333333"),
+            AutoSize = true,
+        };
+
+        var instr2 = new Label
+        {
+            Location = new Point(20, 160),
+            Text = "• Нажмите «выбор файла» или перетащите\r\nизображение (.png или .jpg) в центральную\r\nобласть.\r\n" +
+            "• После загрузки нажмите кнопку\r\n«зашифровать» или «расшифровать»\r\nв нижней панели.\r\n" +
+            "• Если вы выбрали «зашифровать»,\r\nто в появившемся поле введите текст,\r\nкоторый хотите скрыть.\r\n Если вы выбрали «расшифровать»,\r\nто сообщение появится в поле.\r\n" +
+            "• Нажмте Enter, если\r\nвы выбрали «зашифровать»\r\n" +
+            "• Новая картинка появится\r\n на Рабочем столе",
             Font = new Font("Inter", 9),
             ForeColor = ColorTranslator.FromHtml("#555555"),
             AutoSize = true,
@@ -225,6 +240,8 @@ public partial class View
         header.Controls.Add(status);
 
         instruction.Controls.Add(instr);
+        instruction.Controls.Add(instr2);
+        instruction.Controls.Add(label2);
         instruction.Controls.Add(label);
 
         footer.Controls.Add(footerFile);
