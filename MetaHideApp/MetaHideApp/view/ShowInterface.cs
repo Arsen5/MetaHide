@@ -31,6 +31,12 @@ public partial class View
             Location = new Point(220, 280),
             Cursor = Cursors.Hand,
         };
+        checkBox.CheckedChanged += (s, e) =>
+        {
+            bool isHidden = checkBox.Checked; // true = скрытый, false = видимый
+            ModeChangedRequested?.Invoke(isHidden);
+            UpdateStatus(isHidden ? "Режим: Скрытый (не видно в свойствах)" : "Режим: Обычный (видно в свойствах)");
+        };
         var header = new Panel
         {
             Dock = DockStyle.Top,

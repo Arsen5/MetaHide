@@ -21,6 +21,7 @@ public partial class View
     private TextBox? txt;
     private Label? lblStatus;
 
+
     private string _selectedImagePath = "";
 
     public View(Model model, Form form)

@@ -30,6 +30,38 @@ public class JpegSteganography : ISteganography
             byte[] dataBytes = Encoding.UTF8.GetBytes(data);
             string outputPath = GetOutputPath(imagePath, "_hidden.jpg");
 
+            // ========== ВИДИМЫЙ РЕЖИМ (ImageDescription) ==========
+            if (!_hiddenMode)
+            {
+                using (Image img = Image.FromFile(imagePath))
+                {
+                    // Удаляем старое поле ImageDescription, если есть
+                    PropertyItem prop = null;
+                    foreach (PropertyItem p in img.PropertyItems)
+                    {
+                        if (p.Id == 0x010E)
+                        {
+                            prop = p;
+                            break;
+                        }
+                    }
+
+                    if (prop == null)
+                    {
+                        prop = (PropertyItem)Activator.CreateInstance(typeof(PropertyItem), true);
+                        prop.Id = 0x010E;
+                        prop.Type = 2;
+                    }
+
+                    prop.Value = dataBytes;
+                    prop.Len = dataBytes.Length;
+                    img.SetPropertyItem(prop);
+                    img.Save(outputPath, ImageFormat.Jpeg);
+                }
+                return (true, $"Данные записаны в ImageDescription (видимый режим)", outputPath);
+            }
+
+            // ========== СКРЫТЫЙ РЕЖИМ (MakerNote) ==========
             byte[] cleanedBytes = RemoveExifSegment(File.ReadAllBytes(imagePath));
             byte[] exifBlock = CreateExifBlockWithMakerNote(MAKERNOTE_TAG, dataBytes);
 
@@ -60,43 +92,72 @@ public class JpegSteganography : ISteganography
             if (!File.Exists(imagePath))
                 return (false, "Файл не найден", null);
 
-            byte[] data = File.ReadAllBytes(imagePath);
+            byte[] fileBytes = File.ReadAllBytes(imagePath);
+            string makerNoteText = null;
+            string imageDescriptionText = null;
 
-            for (int i = 0; i < data.Length - 20; i++)
+            // 1. Ищем в MakerNote (скрытый режим)
+            for (int i = 0; i < fileBytes.Length - 20; i++)
             {
-                if (data[i] == 0xFF && data[i + 1] == 0xE1 &&
-                    data[i + 4] == 0x45 && data[i + 5] == 0x78 &&
-                    data[i + 6] == 0x69 && data[i + 7] == 0x66 &&
-                    data[i + 8] == 0x00 && data[i + 9] == 0x00)
+                if (fileBytes[i] == 0xFF && fileBytes[i + 1] == 0xE1 &&
+                    fileBytes[i + 4] == 0x45 && fileBytes[i + 5] == 0x78 &&
+                    fileBytes[i + 6] == 0x69 && fileBytes[i + 7] == 0x66 &&
+                    fileBytes[i + 8] == 0x00 && fileBytes[i + 9] == 0x00)
                 {
-                    bool isLittleEndian = (data[i + 10] == 0x49);
-                    int ifdOffset = ReadInt32(data, i + 14, isLittleEndian);
+                    bool isLittleEndian = (fileBytes[i + 10] == 0x49);
+                    int ifdOffset = ReadInt32(fileBytes, i + 14, isLittleEndian);
                     int ifdStart = i + 10 + ifdOffset;
-                    int numTags = ReadInt16(data, ifdStart, isLittleEndian);
+                    int numTags = ReadInt16(fileBytes, ifdStart, isLittleEndian);
 
                     for (int t = 0; t < numTags; t++)
                     {
                         int tagOffset = ifdStart + 2 + t * 12;
-                        int currentTagId = ReadInt16(data, tagOffset, isLittleEndian);
+                        int currentTagId = ReadInt16(fileBytes, tagOffset, isLittleEndian);
 
                         if (currentTagId == MAKERNOTE_TAG)
                         {
-                            int dataOffset = ReadInt32(data, tagOffset + 8, isLittleEndian);
-                            int dataLen = ReadInt32(data, tagOffset + 4, isLittleEndian);
+                            int dataOffset = ReadInt32(fileBytes, tagOffset + 8, isLittleEndian);
+                            int dataLen = ReadInt32(fileBytes, tagOffset + 4, isLittleEndian);
 
-                            if (i + dataOffset + dataLen <= data.Length)
+                            if (i + dataOffset + dataLen <= fileBytes.Length)
                             {
                                 byte[] extracted = new byte[dataLen];
-                                Array.Copy(data, i + dataOffset, extracted, 0, dataLen);
-                                string result = Encoding.UTF8.GetString(extracted).TrimEnd('\0');
-                                return (true, $"Извлечено {dataLen} байт", result);
-
+                                Array.Copy(fileBytes, i + dataOffset, extracted, 0, dataLen);
+                                makerNoteText = Encoding.UTF8.GetString(extracted).TrimEnd('\0');
                             }
                         }
                     }
                 }
             }
-            return (false, "Скрытые данные не найдены", null);
+
+            // 2. Ищем в ImageDescription (видимый режим)
+            try
+            {
+                using (Image img = Image.FromFile(imagePath))
+                {
+                    foreach (PropertyItem prop in img.PropertyItems)
+                    {
+                        if (prop.Id == 0x010E) // ImageDescription
+                        {
+                            imageDescriptionText = Encoding.UTF8.GetString(prop.Value).TrimEnd('\0');
+                            break;
+                        }
+                    }
+                }
+            }
+            catch { /* игнорируем ошибки */ }
+
+            // 3. Формируем результат
+            StringBuilder result = new StringBuilder();
+            if (!string.IsNullOrEmpty(makerNoteText))
+                result.AppendLine($"🔒 Скрытый режим (MakerNote): {makerNoteText}");
+            if (!string.IsNullOrEmpty(imageDescriptionText))
+                result.AppendLine($"📄 Обычный режим (ImageDescription): {imageDescriptionText}");
+
+            if (result.Length > 0)
+                return (true, "Данные найдены", result.ToString().TrimEnd());
+            else
+                return (false, "Данные не найдены", null);
         }
         catch (Exception ex)
         {

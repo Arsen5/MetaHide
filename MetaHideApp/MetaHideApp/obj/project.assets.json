@@ -1,7 +1,7 @@
 {
-  "version": 3,
+  "version": 4,
   "targets": {
-    "net8.0-windows7.0": {
+    "net8.0-windows": {
       "ExifLibNet/2.1.4": {
         "type": "package",
         "dependencies": {
@@ -4878,7 +4878,7 @@
     }
   },
   "projectFileDependencyGroups": {
-    "net8.0-windows7.0": [
+    "net8.0-windows": [
       "ExifLibNet >= 2.1.4",
       "ExifMetadata >= 1.0.0.1",
       "MetadataExtractor >= 2.9.3",
@@ -4886,24 +4886,19 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\orlow\\.nuget\\packages\\": {},
-    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
+    "C:\\Users\\Ame\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\orlow\\OneDrive\\Рабочий стол\\OurProject\\MetaHide\\MetaHideApp\\MetaHideApp\\MetaHide.csproj",
+      "projectUniqueName": "C:\\Users\\Ame\\Desktop\\проект\\MetaHideApp\\MetaHideApp\\MetaHide.csproj",
       "projectName": "MetaHide",
-      "projectPath": "C:\\Users\\orlow\\OneDrive\\Рабочий стол\\OurProject\\MetaHide\\MetaHideApp\\MetaHideApp\\MetaHide.csproj",
-      "packagesPath": "C:\\Users\\orlow\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\orlow\\OneDrive\\Рабочий стол\\OurProject\\MetaHide\\MetaHideApp\\MetaHideApp\\obj\\",
+      "projectPath": "C:\\Users\\Ame\\Desktop\\проект\\MetaHideApp\\MetaHideApp\\MetaHide.csproj",
+      "packagesPath": "C:\\Users\\Ame\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\Ame\\Desktop\\проект\\MetaHideApp\\MetaHideApp\\obj\\",
       "projectStyle": "PackageReference",
-      "fallbackFolders": [
-        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-      ],
       "configFilePaths": [
-        "C:\\Users\\orlow\\AppData\\Roaming\\NuGet\\NuGet.Config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+        "C:\\Users\\Ame\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
       "originalTargetFrameworks": [
@@ -4914,7 +4909,8 @@
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
-        "net8.0-windows7.0": {
+        "net8.0-windows": {
+          "framework": "net8.0-windows7.0",
           "targetAlias": "net8.0-windows",
           "projectReferences": {}
         }
@@ -4929,10 +4925,11 @@
         "auditLevel": "low",
         "auditMode": "direct"
       },
-      "SdkAnalysisLevel": "9.0.300"
+      "SdkAnalysisLevel": "10.0.300"
     },
     "frameworks": {
-      "net8.0-windows7.0": {
+      "net8.0-windows": {
+        "framework": "net8.0-windows7.0",
         "targetAlias": "net8.0-windows",
         "dependencies": {
           "ExifLibNet": {
@@ -4963,6 +4960,24 @@
         ],
         "assetTargetFallback": true,
         "warn": true,
+        "downloadDependencies": [
+          {
+            "name": "Microsoft.AspNetCore.App.Ref",
+            "version": "[8.0.27, 8.0.27]"
+          },
+          {
+            "name": "Microsoft.NETCore.App.Host.win-x64",
+            "version": "[8.0.27, 8.0.27]"
+          },
+          {
+            "name": "Microsoft.NETCore.App.Ref",
+            "version": "[8.0.27, 8.0.27]"
+          },
+          {
+            "name": "Microsoft.WindowsDesktop.App.Ref",
+            "version": "[8.0.27, 8.0.27]"
+          }
+        ],
         "frameworkReferences": {
           "Microsoft.NETCore.App": {
             "privateAssets": "all"
@@ -4971,7 +4986,7 @@
             "privateAssets": "none"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.313/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.300/PortableRuntimeIdentifierGraph.json"
       }
     }
   },
@@ -4983,7 +4998,7 @@
       "message": "Пакет \"ExifMetadata 1.0.0.1\" был восстановлен с помощью \".NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1\", а не целевой платформы проекта \"net8.0-windows7.0\". Этот пакет может быть не полностью совместим с вашим проектом.",
       "libraryId": "ExifMetadata",
       "targetGraphs": [
-        "net8.0-windows7.0"
+        "net8.0-windows"
       ]
     }
   ]
