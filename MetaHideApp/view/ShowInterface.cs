@@ -24,6 +24,40 @@ public partial class View
     // Метод CreateInterface (существующий код) + новые элементы
     private void CreateInterface()
     {
+        // Добавьте эту кнопку в конец метода CreateInterface, перед return или в панель footer
+        var testButton = new Button
+        {
+            Text = "Запустить тесты",
+            BackColor = ColorTranslator.FromHtml("#2196F3"),
+            ForeColor = Color.White,
+            Font = new System.Drawing.Font("Inter", 11),
+            Size = new Size(160, 40),
+            Location = new Point(870, 510), // Расположите где удобно
+            Cursor = Cursors.Hand
+        };
+
+        testButton.Click += (s, e) =>
+        {
+            // Запускаем тесты в отдельном потоке
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                try
+                {
+                    var tester = new MetaHide.tests.SteganographyTester();
+                    tester.RunTests();
+
+                    MessageBox.Show("Тесты завершены! Проверьте консоль для результатов.",
+                                  "Тестирование", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка при тестировании: {ex.Message}",
+                                  "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            });
+        };
+
+        form.Controls.Add(testButton);
         var shifr = new Label
         {
             Location = new Point(30, 480),

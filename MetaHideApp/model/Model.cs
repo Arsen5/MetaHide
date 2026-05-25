@@ -70,6 +70,9 @@ public class Model : ISteganography
 
         try
         {
+            // Получаем размер исходного файла
+            long sourceSize = new FileInfo(imagePath).Length;
+
             // 1. Подготовка данных
             byte[] dataBytes = Encoding.UTF8.GetBytes(data);
 
@@ -102,23 +105,30 @@ public class Model : ISteganography
             _activeHandler.SetHiddenMode(_hiddenMode);
             var result = _activeHandler.HideData(imagePath, processedData);
 
-            // Логирование
+            // Логирование с размерами файлов
             if (result.success)
             {
+                // Получаем размер результирующего файла
+                long resultSize = new FileInfo(result.outputPath).Length;
+
                 string encryptionInfo = _encryptionType == EncryptionModel.EncryptionType.None ?
                     "без шифрования" : $"шифрование: {_encryptionType}";
                 string compressionInfo = _useCompression ? "сжатие: да" : "сжатие: нет";
 
                 LogOperation("Встраивание", imagePath,
                     $"Метод: {_activeHandler.GetType().Name}, {encryptionInfo}, {compressionInfo}",
-                    "Успех");
+                    "Успех", sourceSize, resultSize);
+            }
+            else
+            {
+                LogOperation("Ошибка встраивания", imagePath, "Подготовка данных", result.message, sourceSize, 0);
             }
 
             return result;
         }
         catch (Exception ex)
         {
-            LogOperation("Ошибка встраивания", imagePath, "Подготовка данных", ex.Message);
+            LogOperation("Ошибка встраивания", imagePath, "Подготовка данных", ex.Message, 0, 0);
             return (false, $"Ошибка: {ex.Message}", null);
         }
     }
@@ -131,6 +141,9 @@ public class Model : ISteganography
 
         try
         {
+            // Получаем размер файла
+            long sourceSize = new FileInfo(imagePath).Length;
+
             _activeHandler.SetHiddenMode(_hiddenMode);
             var result = _activeHandler.ExtractData(imagePath);
 
@@ -183,16 +196,19 @@ public class Model : ISteganography
                     "без дешифрования" : $"дешифрование: {_encryptionType}";
 
                 LogOperation("Извлечение", imagePath,
-                    $"Метод: {_activeHandler.GetType().Name}, {encryptionInfo}", "Успех");
+                    $"Метод: {_activeHandler.GetType().Name}, {encryptionInfo}", "Успех", sourceSize, 0);
 
                 return (true, result.message, finalText);
             }
-
-            return result;
+            else
+            {
+                LogOperation("Ошибка извлечения", imagePath, "Обработка данных", result.message, sourceSize, 0);
+                return result;
+            }
         }
         catch (Exception ex)
         {
-            LogOperation("Ошибка извлечения", imagePath, "Обработка данных", ex.Message);
+            LogOperation("Ошибка извлечения", imagePath, "Обработка данных", ex.Message, 0, 0);
             return (false, $"Ошибка: {ex.Message}", null);
         }
     }
@@ -251,11 +267,24 @@ public class Model : ISteganography
         return null;
     }
 
-    private void LogOperation(string operation, string file, string method, string result)
+    // ИЗМЕНЕННЫЙ МЕТОД: добавлены параметры размеров файлов
+    private void LogOperation(string operation, string file, string method, string result, long sourceSize, long resultSize)
     {
         try
         {
-            string logEntry = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} | {operation} | {Path.GetFileName(file)} | {method} | {result}";
+            string sizeInfo = "";
+            if (sourceSize > 0)
+            {
+                sizeInfo = $" | Размер: {sourceSize} байт";
+                if (resultSize > 0)
+                {
+                    sizeInfo += $" -> {resultSize} байт";
+                    double increase = (double)resultSize / sourceSize * 100;
+                    sizeInfo += $" (увеличение: {increase:F1}%)";
+                }
+            }
+
+            string logEntry = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} | {operation} | {Path.GetFileName(file)} | {method} | {result}{sizeInfo}";
             string logPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "metahide.log");
             File.AppendAllText(logPath, logEntry + Environment.NewLine);
         }

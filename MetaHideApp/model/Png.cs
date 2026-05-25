@@ -1,7 +1,7 @@
-﻿// PngSteganography.cs
-using System;
+﻿using System;
 using System.IO;
 using System.Text;
+using System.Collections.Generic;
 using test;
 
 namespace MetaHide.model;
@@ -25,43 +25,39 @@ public class PngSteganography : ISteganography
             if (!File.Exists(imagePath)) return (false, "Файл не найден", null);
             if (string.IsNullOrEmpty(data)) return (false, "Текст не может быть пустым", null);
 
-            byte[] pngBytes = File.ReadAllBytes(imagePath);
             byte[] dataBytes = Encoding.UTF8.GetBytes(data);
             string outputPath = GetOutputPath(imagePath, "_hidden.png");
 
-            // Находим позицию IEND (он всегда последний)
+            byte[] pngBytes = File.ReadAllBytes(imagePath);
             int iendPos = FindIEND(pngBytes);
-            if (iendPos == -1) return (false, "Не найден IEND чанк", null);
+            if (iendPos == -1)
+                return (false, "Не найден IEND чанк", null);
 
-            // Отделяем всё до IEND
             byte[] beforeIEND = new byte[iendPos];
             Array.Copy(pngBytes, 0, beforeIEND, 0, iendPos);
 
             using (MemoryStream ms = new MemoryStream())
             {
-                // Пишем всё, кроме IEND
                 ms.Write(beforeIEND, 0, beforeIEND.Length);
 
                 if (_hiddenMode)
                 {
-                    // СКРЫТЫЙ РЕЖИМ: кастомный чанк
                     byte[] chunkType = Encoding.ASCII.GetBytes(CUSTOM_CHUNK_TYPE);
                     byte[] newChunk = CreateChunk(chunkType, dataBytes);
                     ms.Write(newChunk, 0, newChunk.Length);
                 }
                 else
                 {
-                    // ВИДИМЫЙ РЕЖИМ: tEXt чанк
                     byte[] textChunk = CreateTextChunk(VISIBLE_KEYWORD, dataBytes);
                     ms.Write(textChunk, 0, textChunk.Length);
                 }
 
-                // Добавляем IEND обратно
                 ms.Write(pngBytes, iendPos, pngBytes.Length - iendPos);
                 File.WriteAllBytes(outputPath, ms.ToArray());
             }
 
-            return (true, _hiddenMode ? "Данные скрыты (не видны)" : "Данные записаны (видны в свойствах)", outputPath);
+            string modeName = _hiddenMode ? "скрытый" : "обычный";
+            return (true, $"Данные записаны ({modeName} режим, {dataBytes.Length} байт)", outputPath);
         }
         catch (Exception ex) { return (false, $"Ошибка: {ex.Message}", null); }
     }
@@ -78,17 +74,15 @@ public class PngSteganography : ISteganography
             byte[] customChunkType = Encoding.ASCII.GetBytes(CUSTOM_CHUNK_TYPE);
             byte[] textChunkType = Encoding.ASCII.GetBytes("tEXt");
 
-            string hiddenText = null;
-            string visibleText = null;
+            List<string> allMessages = new List<string>();
 
-            int pos = 8; // пропускаем PNG сигнатуру
+            int pos = 8;
 
             while (pos + 12 <= data.Length)
             {
                 int chunkLen = (data[pos] << 24) | (data[pos + 1] << 16) | (data[pos + 2] << 8) | data[pos + 3];
                 if (chunkLen < 0 || pos + chunkLen + 12 > data.Length) break;
 
-                // Проверяем тип чанка
                 byte[] chunkType = new byte[4];
                 Array.Copy(data, pos + 4, chunkType, 0, 4);
 
@@ -98,14 +92,15 @@ public class PngSteganography : ISteganography
                 {
                     byte[] chunkData = new byte[chunkLen];
                     Array.Copy(data, pos + 8, chunkData, 0, chunkLen);
-                    hiddenText = Encoding.UTF8.GetString(chunkData);
+                    string text = Encoding.UTF8.GetString(chunkData);
+                    if (!string.IsNullOrEmpty(text))
+                        allMessages.Add(text);
                 }
 
                 // Видимый чанк "tEXt"
                 if (chunkType[0] == textChunkType[0] && chunkType[1] == textChunkType[1] &&
                     chunkType[2] == textChunkType[2] && chunkType[3] == textChunkType[3])
                 {
-                    // Извлекаем текст из tEXt чанка
                     int keywordEnd = pos + 8;
                     while (keywordEnd < pos + 8 + chunkLen && data[keywordEnd] != 0)
                         keywordEnd++;
@@ -118,7 +113,9 @@ public class PngSteganography : ISteganography
                         {
                             byte[] textData = new byte[dataLen];
                             Array.Copy(data, dataStart, textData, 0, dataLen);
-                            visibleText = Encoding.UTF8.GetString(textData);
+                            string text = Encoding.UTF8.GetString(textData);
+                            if (!string.IsNullOrEmpty(text))
+                                allMessages.Add(text);
                         }
                     }
                 }
@@ -126,15 +123,8 @@ public class PngSteganography : ISteganography
                 pos += chunkLen + 12;
             }
 
-            // Формируем результат
-            StringBuilder result = new StringBuilder();
-            if (!string.IsNullOrEmpty(hiddenText))
-                result.AppendLine(hiddenText);
-            if (!string.IsNullOrEmpty(visibleText))
-                result.AppendLine(visibleText);
-
-            if (result.Length > 0)
-                return (true, "Данные найдены", result.ToString().TrimEnd());
+            if (allMessages.Count > 0)
+                return (true, "Данные найдены", string.Join(Environment.NewLine, allMessages));
             else
                 return (false, "Данные не найдены", null);
         }
@@ -153,17 +143,15 @@ public class PngSteganography : ISteganography
     {
         using (MemoryStream ms = new MemoryStream())
         {
-            // Длина (big-endian)
             WriteUInt32BE(ms, (uint)data.Length);
-            // Тип
             ms.Write(chunkType, 0, 4);
-            // Данные
             ms.Write(data, 0, data.Length);
-            // CRC
+
             byte[] crcData = new byte[4 + data.Length];
             Array.Copy(chunkType, 0, crcData, 0, 4);
             Array.Copy(data, 0, crcData, 4, data.Length);
             WriteUInt32BE(ms, CalculateCRC32(crcData));
+
             return ms.ToArray();
         }
     }
@@ -175,7 +163,7 @@ public class PngSteganography : ISteganography
             byte[] keywordBytes = Encoding.ASCII.GetBytes(keyword);
             byte[] chunkData = new byte[keywordBytes.Length + 1 + data.Length];
             Array.Copy(keywordBytes, 0, chunkData, 0, keywordBytes.Length);
-            chunkData[keywordBytes.Length] = 0; // разделитель
+            chunkData[keywordBytes.Length] = 0;
             Array.Copy(data, 0, chunkData, keywordBytes.Length + 1, data.Length);
 
             WriteUInt32BE(ms, (uint)chunkData.Length);
@@ -186,24 +174,70 @@ public class PngSteganography : ISteganography
             Array.Copy(Encoding.ASCII.GetBytes("tEXt"), 0, crcData, 0, 4);
             Array.Copy(chunkData, 0, crcData, 4, chunkData.Length);
             WriteUInt32BE(ms, CalculateCRC32(crcData));
+
             return ms.ToArray();
         }
     }
 
     private int FindIEND(byte[] data)
     {
-        // Ищем IEND чанк с конца файла
-        byte[] iendSignature = { 0x49, 0x45, 0x4E, 0x44 };
         for (int i = data.Length - 12; i >= 0; i--)
         {
-            if (data[i] == 0x00 && data[i + 1] == 0x00 && data[i + 2] == 0x00 && data[i + 3] == 0x00 &&
-                data[i + 4] == iendSignature[0] && data[i + 5] == iendSignature[1] &&
-                data[i + 6] == iendSignature[2] && data[i + 7] == iendSignature[3])
+            if (data[i] == 0x49 && data[i + 1] == 0x45 &&
+                data[i + 2] == 0x4E && data[i + 3] == 0x44)
             {
-                return i;
+                if (i >= 4 && data[i - 4] == 0x00 && data[i - 3] == 0x00 &&
+                    data[i - 2] == 0x00 && data[i - 1] == 0x00)
+                {
+                    return i - 4;
+                }
             }
         }
-        return -1;
+        return FindLastValidChunk(data);
+    }
+
+    private int FindLastValidChunk(byte[] data)
+    {
+        int pos = 8;
+        int lastValidPos = pos;
+
+        while (pos + 12 <= data.Length)
+        {
+            int chunkLen = (data[pos] << 24) | (data[pos + 1] << 16) |
+                          (data[pos + 2] << 8) | data[pos + 3];
+
+            if (chunkLen < 0 || chunkLen > 10000000)
+                break;
+
+            if (pos + 12 + chunkLen > data.Length)
+                break;
+
+            byte[] chunkType = new byte[4];
+            Array.Copy(data, pos + 4, chunkType, 0, 4);
+
+            bool isValidType = true;
+            for (int i = 0; i < 4; i++)
+            {
+                if (!((chunkType[i] >= 'A' && chunkType[i] <= 'Z') ||
+                      (chunkType[i] >= 'a' && chunkType[i] <= 'z')))
+                {
+                    isValidType = false;
+                    break;
+                }
+            }
+
+            if (isValidType)
+            {
+                lastValidPos = pos;
+                pos += chunkLen + 12;
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        return lastValidPos;
     }
 
     private void WriteUInt32BE(MemoryStream ms, uint value)
