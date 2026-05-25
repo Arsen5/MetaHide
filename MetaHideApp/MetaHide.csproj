@@ -15,4 +15,19 @@
     <PackageReference Include="NExifTool" Version="0.12.0" />
   </ItemGroup>
 
+  <!-- Копировать все PNG, ICO, JPG, JSON из корня проекта -->
+  <ItemGroup>
+    <Content Include="*.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="*.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="*.jpg" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- Копировать всю папку imgs -->
+  <ItemGroup>
+    <Content Include="imgs\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>

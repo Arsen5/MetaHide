@@ -172,7 +172,7 @@ public partial class View
         {
             SizeMode = PictureBoxSizeMode.AutoSize,
             Location = new Point(345, 100),
-            Image = Image.FromFile("SVG.png")
+            Image = Image.FromFile("imgs/SVG.png")
         };
 
         var text = new Label
@@ -472,7 +472,7 @@ public partial class View
         {
             SizeMode = PictureBoxSizeMode.AutoSize,
             Location = new Point(345, 100),
-            Image = Image.FromFile("SVG.png")
+            Image = Image.FromFile("imgs/SVG.png")
         };
 
         var text = new Label
@@ -528,7 +528,7 @@ public partial class View
             var image = new PictureBox
             {
                 Dock = DockStyle.Top,
-                Image = Image.FromFile("chosen.png"),
+                Image = Image.FromFile("imgs/chosen.png"),
                 SizeMode = PictureBoxSizeMode.CenterImage
             };
 

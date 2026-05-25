@@ -33,7 +33,7 @@ public partial class View
         this.form = form;
         form.Size = new Size(1200, 700);
         form.Text = "MetaHide";
-        form.Icon = new Icon("_.ico");
+        form.Icon = new Icon("imgs/_.ico");
         form.MaximizeBox = false;
         form.FormBorderStyle = FormBorderStyle.FixedSingle;
         CreateInterface();
