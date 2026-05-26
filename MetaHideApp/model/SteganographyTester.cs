@@ -203,6 +203,7 @@ namespace MetaHide.tests
                 string visibleData = $"VisibleSeq_{DateTime.Now:HHmmss}";
                 string hiddenData = $"HiddenSeq_{DateTime.Now:HHmmss}";
 
+                // ЗАПИСЫВАЕМ ВИДИМОЕ В ОТДЕЛЬНЫЙ ФАЙЛ
                 _model.SetHiddenMode(false);
                 var visibleResult = _model.HideData(tempFile, visibleData);
                 if (!visibleResult.success)
@@ -211,16 +212,23 @@ namespace MetaHide.tests
                     return;
                 }
 
+                // ЗАПИСЫВАЕМ СКРЫТОЕ В ОТДЕЛЬНЫЙ ФАЙЛ (НЕ ПОВЕРХ ВИДИМОГО)
                 _model.SetHiddenMode(true);
-                var hiddenResult = _model.HideData(visibleResult.outputPath, hiddenData);
+                var hiddenResult = _model.HideData(tempFile, hiddenData);
                 if (!hiddenResult.success)
                 {
                     Log($"    Ошибка записи скрытого: {hiddenResult.message}");
                     return;
                 }
 
+                // ТЕПЕРЬ У НАС ЕСТЬ ДВА ФАЙЛА:
+                // visibleResult.outputPath — файл с видимым сообщением
+                // hiddenResult.outputPath — файл со скрытым сообщением
+
+                // ИЗВЛЕКАЕМ ИЗ ОБОИХ
                 _model.SetHiddenMode(false);
-                var extractVisible = _model.ExtractData(hiddenResult.outputPath);
+                var extractVisible = _model.ExtractData(visibleResult.outputPath);
+
                 _model.SetHiddenMode(true);
                 var extractHidden = _model.ExtractData(hiddenResult.outputPath);
 
@@ -250,6 +258,7 @@ namespace MetaHide.tests
                     });
                 }
 
+                // Очистка
                 try { File.Delete(tempFile); } catch { }
                 try { File.Delete(visibleResult.outputPath); } catch { }
                 try { File.Delete(hiddenResult.outputPath); } catch { }
