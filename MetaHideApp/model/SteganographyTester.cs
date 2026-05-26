@@ -29,7 +29,7 @@ namespace MetaHide.tests
             var imageFiles = GetTestImages();
             if (imageFiles.Count == 0)
             {
-                Log("❌ Нет изображений в папке TestImages!");
+                Log("Нет изображений в папке TestImages!");
                 Log("Добавьте PNG и JPG файлы в папку TestImages на рабочем столе");
                 return;
             }
@@ -47,7 +47,7 @@ namespace MetaHide.tests
             Log("Сводка по тестам:");
             foreach (var result in _results)
             {
-                string status = result.Success ? "✅" : "❌";
+                string status = result.Success ? "[OK]" : "[FAIL]";
                 Log($"{status} {result.ImageName} - {result.Mode}: {result.ErrorMessage ?? result.Message}");
             }
         }
@@ -66,10 +66,9 @@ namespace MetaHide.tests
             string fileName = Path.GetFileName(imagePath);
             Log($"Тестируем: {fileName} ({new FileInfo(imagePath).Length} байт)");
 
-            // Проверяем, можно ли открыть изображение
             if (!IsFileValid(imagePath))
             {
-                Log($"  ⚠️ Файл не является валидным изображением, пропускаем");
+                Log($"  Файл не является валидным изображением, пропускаем");
                 _results.Add(new TestResult
                 {
                     ImageName = fileName,
@@ -80,16 +79,9 @@ namespace MetaHide.tests
                 return;
             }
 
-            // Тест видимого режима
             TestVisibleMode(imagePath, fileName);
-
-            // Тест скрытого режима
             TestHiddenMode(imagePath, fileName);
-
-            // НОВЫЙ ТЕСТ: последовательная запись (видимый → скрытый)
             TestSequentialMode(imagePath, fileName);
-
-            // НОВЫЙ ТЕСТ: шифрование
             TestEncryptionMode(imagePath, fileName);
 
             Log("");
@@ -105,29 +97,9 @@ namespace MetaHide.tests
                 string testData = $"Test_Visible_{DateTime.Now:HHmmss}";
 
                 var hideResult = _model.HideData(imagePath, testData);
-                if (hideResult.success)
+                if (!hideResult.success)
                 {
-                    bool fileIsBroken = !IsFileValid(hideResult.outputPath);
-                    var extractResult = _model.ExtractData(hideResult.outputPath);
-                    bool success = extractResult.success && extractResult.data.Contains(testData);
-
-                    Log($"    ✅ Успех: {success}, Файл сломан: {fileIsBroken}");
-
-                    _results.Add(new TestResult
-                    {
-                        ImageName = fileName,
-                        Mode = "Visible",
-                        Success = success && !fileIsBroken,
-                        TestData = testData,
-                        ExtractedData = extractResult.data,
-                        ErrorMessage = fileIsBroken ? "Файл сломался" : extractResult.message
-                    });
-
-                    try { File.Delete(hideResult.outputPath); } catch { }
-                }
-                else
-                {
-                    Log($"    ❌ Ошибка: {hideResult.message}");
+                    Log($"    Ошибка записи: {hideResult.message}");
                     _results.Add(new TestResult
                     {
                         ImageName = fileName,
@@ -135,11 +107,28 @@ namespace MetaHide.tests
                         Success = false,
                         ErrorMessage = hideResult.message
                     });
+                    return;
                 }
+
+                var extractResult = _model.ExtractData(hideResult.outputPath);
+                bool success = extractResult.success && extractResult.data.Contains(testData);
+
+                Log($"    Запись: {hideResult.success}, Извлечение: {extractResult.success}, Данные: {extractResult.data}");
+
+                _results.Add(new TestResult
+                {
+                    ImageName = fileName,
+                    Mode = "Visible",
+                    Success = success,
+                    Message = success ? "OK" : extractResult.message,
+                    ExtractedData = extractResult.data
+                });
+
+                try { File.Delete(hideResult.outputPath); } catch { }
             }
             catch (Exception ex)
             {
-                Log($"    ❌ Исключение: {ex.Message}");
+                Log($"    Исключение: {ex.Message}");
                 _results.Add(new TestResult
                 {
                     ImageName = fileName,
@@ -160,29 +149,9 @@ namespace MetaHide.tests
                 string testData = $"Test_Hidden_{DateTime.Now:HHmmss}";
 
                 var hideResult = _model.HideData(imagePath, testData);
-                if (hideResult.success)
+                if (!hideResult.success)
                 {
-                    bool fileIsBroken = !IsFileValid(hideResult.outputPath);
-                    var extractResult = _model.ExtractData(hideResult.outputPath);
-                    bool success = extractResult.success && extractResult.data.Contains(testData);
-
-                    Log($"    ✅ Успех: {success}, Файл сломан: {fileIsBroken}");
-
-                    _results.Add(new TestResult
-                    {
-                        ImageName = fileName,
-                        Mode = "Hidden",
-                        Success = success && !fileIsBroken,
-                        TestData = testData,
-                        ExtractedData = extractResult.data,
-                        ErrorMessage = fileIsBroken ? "Файл сломался" : extractResult.message
-                    });
-
-                    try { File.Delete(hideResult.outputPath); } catch { }
-                }
-                else
-                {
-                    Log($"    ❌ Ошибка: {hideResult.message}");
+                    Log($"    Ошибка записи: {hideResult.message}");
                     _results.Add(new TestResult
                     {
                         ImageName = fileName,
@@ -190,11 +159,28 @@ namespace MetaHide.tests
                         Success = false,
                         ErrorMessage = hideResult.message
                     });
+                    return;
                 }
+
+                var extractResult = _model.ExtractData(hideResult.outputPath);
+                bool success = extractResult.success && extractResult.data.Contains(testData);
+
+                Log($"    Запись: {hideResult.success}, Извлечение: {extractResult.success}, Данные: {extractResult.data}");
+
+                _results.Add(new TestResult
+                {
+                    ImageName = fileName,
+                    Mode = "Hidden",
+                    Success = success,
+                    Message = success ? "OK" : extractResult.message,
+                    ExtractedData = extractResult.data
+                });
+
+                try { File.Delete(hideResult.outputPath); } catch { }
             }
             catch (Exception ex)
             {
-                Log($"    ❌ Исключение: {ex.Message}");
+                Log($"    Исключение: {ex.Message}");
                 _results.Add(new TestResult
                 {
                     ImageName = fileName,
@@ -205,7 +191,6 @@ namespace MetaHide.tests
             }
         }
 
-        // НОВЫЙ ТЕСТ: последовательная запись (видимый → скрытый)
         private void TestSequentialMode(string imagePath, string fileName)
         {
             Log("  Тест последовательной записи (видимый → скрытый)...");
@@ -218,30 +203,24 @@ namespace MetaHide.tests
                 string visibleData = $"VisibleSeq_{DateTime.Now:HHmmss}";
                 string hiddenData = $"HiddenSeq_{DateTime.Now:HHmmss}";
 
-                // Записываем видимое
                 _model.SetHiddenMode(false);
                 var visibleResult = _model.HideData(tempFile, visibleData);
                 if (!visibleResult.success)
                 {
-                    Log($"    ❌ Ошибка записи видимого: {visibleResult.message}");
+                    Log($"    Ошибка записи видимого: {visibleResult.message}");
                     return;
                 }
 
-                // В тот же файл записываем скрытое
                 _model.SetHiddenMode(true);
                 var hiddenResult = _model.HideData(visibleResult.outputPath, hiddenData);
                 if (!hiddenResult.success)
                 {
-                    Log($"    ❌ Ошибка записи скрытого: {hiddenResult.message}");
-                    try { File.Delete(visibleResult.outputPath); } catch { }
+                    Log($"    Ошибка записи скрытого: {hiddenResult.message}");
                     return;
                 }
 
-                // Извлекаем видимое
                 _model.SetHiddenMode(false);
                 var extractVisible = _model.ExtractData(hiddenResult.outputPath);
-
-                // Извлекаем скрытое
                 _model.SetHiddenMode(true);
                 var extractHidden = _model.ExtractData(hiddenResult.outputPath);
 
@@ -250,7 +229,7 @@ namespace MetaHide.tests
 
                 if (hasVisible && hasHidden)
                 {
-                    Log($"    ✅ Успех: оба сообщения найдены");
+                    Log($"    Успех: оба сообщения найдены");
                     _results.Add(new TestResult
                     {
                         ImageName = fileName,
@@ -261,7 +240,7 @@ namespace MetaHide.tests
                 }
                 else
                 {
-                    Log($"    ❌ Ошибка: видимый={hasVisible}, скрытый={hasHidden}");
+                    Log($"    Ошибка: видимый={hasVisible}, скрытый={hasHidden}");
                     _results.Add(new TestResult
                     {
                         ImageName = fileName,
@@ -271,18 +250,16 @@ namespace MetaHide.tests
                     });
                 }
 
-                // Очистка
                 try { File.Delete(tempFile); } catch { }
                 try { File.Delete(visibleResult.outputPath); } catch { }
                 try { File.Delete(hiddenResult.outputPath); } catch { }
             }
             catch (Exception ex)
             {
-                Log($"    ❌ Исключение: {ex.Message}");
+                Log($"    Исключение: {ex.Message}");
             }
         }
 
-        // НОВЫЙ ТЕСТ: шифрование
         private void TestEncryptionMode(string imagePath, string fileName)
         {
             Log("  Тест шифрования (XOR и AES)...");
@@ -292,7 +269,7 @@ namespace MetaHide.tests
                 string password = "test123";
                 string testData = $"Encrypt_{DateTime.Now:HHmmss}";
 
-                // Тест XOR
+                // XOR
                 _model.SetEncryptionSettings(EncryptionModel.EncryptionType.XOR, password);
                 _model.SetCompressionSettings(true, 1);
                 _model.SetHiddenMode(true);
@@ -305,7 +282,7 @@ namespace MetaHide.tests
 
                     if (extractResult.success && extractResult.data.Contains(testData))
                     {
-                        Log($"    ✅ XOR шифрование: успешно");
+                        Log($"    XOR: OK");
                         _results.Add(new TestResult
                         {
                             ImageName = fileName,
@@ -316,7 +293,7 @@ namespace MetaHide.tests
                     }
                     else
                     {
-                        Log($"    ❌ XOR шифрование: ошибка");
+                        Log($"    XOR: Ошибка");
                         _results.Add(new TestResult
                         {
                             ImageName = fileName,
@@ -328,7 +305,7 @@ namespace MetaHide.tests
                     try { File.Delete(xorResult.outputPath); } catch { }
                 }
 
-                // Тест AES
+                // AES
                 _model.SetEncryptionSettings(EncryptionModel.EncryptionType.AES128, password);
                 _model.SetCompressionSettings(true, 1);
                 _model.SetHiddenMode(true);
@@ -341,7 +318,7 @@ namespace MetaHide.tests
 
                     if (extractResult.success && extractResult.data.Contains(testData))
                     {
-                        Log($"    ✅ AES шифрование: успешно");
+                        Log($"    AES: OK");
                         _results.Add(new TestResult
                         {
                             ImageName = fileName,
@@ -352,7 +329,7 @@ namespace MetaHide.tests
                     }
                     else
                     {
-                        Log($"    ❌ AES шифрование: ошибка");
+                        Log($"    AES: Ошибка");
                         _results.Add(new TestResult
                         {
                             ImageName = fileName,
@@ -366,7 +343,7 @@ namespace MetaHide.tests
             }
             catch (Exception ex)
             {
-                Log($"    ❌ Исключение: {ex.Message}");
+                Log($"    Исключение: {ex.Message}");
             }
         }
 
