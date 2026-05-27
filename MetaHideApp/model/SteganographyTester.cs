@@ -42,6 +42,9 @@ namespace MetaHide.tests
                 TestImage(imageFile);
             }
 
+            // Отдельный тест LSB на PNG
+            TestLsbOnPng();
+
             Log("=== ТЕСТЫ ЗАВЕРШЕНЫ ===");
             Log("");
             Log("Сводка по тестам:");
@@ -59,6 +62,86 @@ namespace MetaHide.tests
             images.AddRange(Directory.GetFiles(_testImagesFolder, "*.jpg"));
             images.AddRange(Directory.GetFiles(_testImagesFolder, "*.jpeg"));
             return images;
+        }
+
+        private void TestLsbOnPng()
+        {
+            Log("");
+            Log("=== ТЕСТ LSB НА PNG ===");
+
+            var pngFiles = Directory.GetFiles(_testImagesFolder, "*.png");
+            if (pngFiles.Length == 0)
+            {
+                Log("Нет PNG файлов для теста LSB");
+                return;
+            }
+
+            foreach (string imagePath in pngFiles)
+            {
+                string fileName = Path.GetFileName(imagePath);
+
+                // Тест 1: Английский текст
+                string testData1 = $"Hello World! LSB Test {DateTime.Now:HHmmss}";
+                RunLsbTest(imagePath, fileName, testData1, "Английский текст");
+
+                // Тест 2: Русский текст
+                string testData2 = $"Привет мир! Тест LSB на русском {DateTime.Now:HHmmss}";
+                RunLsbTest(imagePath, fileName, testData2, "Русский текст");
+
+                // Тест 3: Длинный текст (200+ символов)
+                string testData3 = new string('A', 200) + new string('Б', 200) + DateTime.Now.ToString("HHmmss");
+                RunLsbTest(imagePath, fileName, testData3, "Длинный текст");
+            }
+        }
+
+        private void RunLsbTest(string imagePath, string fileName, string testData, string testType)
+        {
+            Log($"  [{testType}] Тест на {fileName}");
+
+            try
+            {
+                _model.SetMethod("lsb");
+                _model.SetHiddenMode(false);
+                _model.SetEncryptionSettings(EncryptionModel.EncryptionType.None, "");
+                _model.SetCompressionSettings(false, 1);
+
+                var hideResult = _model.HideData(imagePath, testData);
+                if (!hideResult.success)
+                {
+                    Log($"    ОШИБКА скрытия: {hideResult.message}");
+                    _results.Add(new TestResult { ImageName = fileName, Mode = $"LSB-{testType}", Success = false, ErrorMessage = hideResult.message });
+                    return;
+                }
+
+                var extractResult = _model.ExtractData(hideResult.outputPath);
+                if (!extractResult.success)
+                {
+                    Log($"    ОШИБКА извлечения: {extractResult.message}");
+                    _results.Add(new TestResult { ImageName = fileName, Mode = $"LSB-{testType}", Success = false, ErrorMessage = extractResult.message });
+                    try { File.Delete(hideResult.outputPath); } catch { }
+                    return;
+                }
+
+                bool success = extractResult.data == testData;
+                Log($"    {testType}: {(success ? "✓ ПРОЙДЕН" : "✗ НЕ ПРОЙДЕН")}");
+                Log($"    Ожидалось: {testData.Length} символов");
+                Log($"    Получено: {extractResult.data?.Length ?? 0} символов");
+
+                if (!success)
+                {
+                    Log($"    Оригинал: {testData}");
+                    Log($"    Извлечено: {extractResult.data}");
+                }
+
+                _results.Add(new TestResult { ImageName = fileName, Mode = $"LSB-{testType}", Success = success, Message = success ? "OK" : "Данные не совпадают" });
+
+                try { File.Delete(hideResult.outputPath); } catch { }
+            }
+            catch (Exception ex)
+            {
+                Log($"    ИСКЛЮЧЕНИЕ: {ex.Message}");
+                _results.Add(new TestResult { ImageName = fileName, Mode = $"LSB-{testType}", Success = false, ErrorMessage = ex.Message });
+            }
         }
 
         private void TestImage(string imagePath)
@@ -93,6 +176,7 @@ namespace MetaHide.tests
 
             try
             {
+                _model.SetMethod("exif");
                 _model.SetHiddenMode(false);
                 string testData = $"Test_Visible_{DateTime.Now:HHmmss}";
 
@@ -111,9 +195,11 @@ namespace MetaHide.tests
                 }
 
                 var extractResult = _model.ExtractData(hideResult.outputPath);
-                bool success = extractResult.success && extractResult.data.Contains(testData);
+                bool success = extractResult.success && extractResult.data == testData;
 
-                Log($"    Запись: {hideResult.success}, Извлечение: {extractResult.success}, Данные: {extractResult.data}");
+                Log($"    Запись: {hideResult.success}, Извлечение: {extractResult.success}");
+                Log($"    Ожидалось: {testData}");
+                Log($"    Получено: {extractResult.data}");
 
                 _results.Add(new TestResult
                 {
@@ -145,6 +231,7 @@ namespace MetaHide.tests
 
             try
             {
+                _model.SetMethod("marker");
                 _model.SetHiddenMode(true);
                 string testData = $"Test_Hidden_{DateTime.Now:HHmmss}";
 
@@ -163,9 +250,11 @@ namespace MetaHide.tests
                 }
 
                 var extractResult = _model.ExtractData(hideResult.outputPath);
-                bool success = extractResult.success && extractResult.data.Contains(testData);
+                bool success = extractResult.success && extractResult.data == testData;
 
-                Log($"    Запись: {hideResult.success}, Извлечение: {extractResult.success}, Данные: {extractResult.data}");
+                Log($"    Запись: {hideResult.success}, Извлечение: {extractResult.success}");
+                Log($"    Ожидалось: {testData}");
+                Log($"    Получено: {extractResult.data}");
 
                 _results.Add(new TestResult
                 {
@@ -203,7 +292,7 @@ namespace MetaHide.tests
                 string visibleData = $"VisibleSeq_{DateTime.Now:HHmmss}";
                 string hiddenData = $"HiddenSeq_{DateTime.Now:HHmmss}";
 
-                // ЗАПИСЫВАЕМ ВИДИМОЕ В ОТДЕЛЬНЫЙ ФАЙЛ
+                _model.SetMethod("exif");
                 _model.SetHiddenMode(false);
                 var visibleResult = _model.HideData(tempFile, visibleData);
                 if (!visibleResult.success)
@@ -212,7 +301,7 @@ namespace MetaHide.tests
                     return;
                 }
 
-                // ЗАПИСЫВАЕМ СКРЫТОЕ В ОТДЕЛЬНЫЙ ФАЙЛ (НЕ ПОВЕРХ ВИДИМОГО)
+                _model.SetMethod("marker");
                 _model.SetHiddenMode(true);
                 var hiddenResult = _model.HideData(tempFile, hiddenData);
                 if (!hiddenResult.success)
@@ -221,19 +310,16 @@ namespace MetaHide.tests
                     return;
                 }
 
-                // ТЕПЕРЬ У НАС ЕСТЬ ДВА ФАЙЛА:
-                // visibleResult.outputPath — файл с видимым сообщением
-                // hiddenResult.outputPath — файл со скрытым сообщением
-
-                // ИЗВЛЕКАЕМ ИЗ ОБОИХ
+                _model.SetMethod("exif");
                 _model.SetHiddenMode(false);
                 var extractVisible = _model.ExtractData(visibleResult.outputPath);
 
+                _model.SetMethod("marker");
                 _model.SetHiddenMode(true);
                 var extractHidden = _model.ExtractData(hiddenResult.outputPath);
 
-                bool hasVisible = extractVisible.success && extractVisible.data.Contains(visibleData);
-                bool hasHidden = extractHidden.success && extractHidden.data.Contains(hiddenData);
+                bool hasVisible = extractVisible.success && extractVisible.data == visibleData;
+                bool hasHidden = extractHidden.success && extractHidden.data == hiddenData;
 
                 if (hasVisible && hasHidden)
                 {
@@ -258,7 +344,6 @@ namespace MetaHide.tests
                     });
                 }
 
-                // Очистка
                 try { File.Delete(tempFile); } catch { }
                 try { File.Delete(visibleResult.outputPath); } catch { }
                 try { File.Delete(hiddenResult.outputPath); } catch { }
@@ -279,6 +364,7 @@ namespace MetaHide.tests
                 string testData = $"Encrypt_{DateTime.Now:HHmmss}";
 
                 // XOR
+                _model.SetMethod("marker");
                 _model.SetEncryptionSettings(EncryptionModel.EncryptionType.XOR, password);
                 _model.SetCompressionSettings(true, 1);
                 _model.SetHiddenMode(true);
@@ -289,7 +375,7 @@ namespace MetaHide.tests
                     _model.SetEncryptionSettings(EncryptionModel.EncryptionType.XOR, password);
                     var extractResult = _model.ExtractData(xorResult.outputPath);
 
-                    if (extractResult.success && extractResult.data.Contains(testData))
+                    if (extractResult.success && extractResult.data == testData)
                     {
                         Log($"    XOR: OK");
                         _results.Add(new TestResult
@@ -302,7 +388,7 @@ namespace MetaHide.tests
                     }
                     else
                     {
-                        Log($"    XOR: Ошибка");
+                        Log($"    XOR: Ошибка - ожидалось '{testData}', получено '{extractResult.data}'");
                         _results.Add(new TestResult
                         {
                             ImageName = fileName,
@@ -315,6 +401,7 @@ namespace MetaHide.tests
                 }
 
                 // AES
+                _model.SetMethod("marker");
                 _model.SetEncryptionSettings(EncryptionModel.EncryptionType.AES128, password);
                 _model.SetCompressionSettings(true, 1);
                 _model.SetHiddenMode(true);
@@ -325,7 +412,7 @@ namespace MetaHide.tests
                     _model.SetEncryptionSettings(EncryptionModel.EncryptionType.AES128, password);
                     var extractResult = _model.ExtractData(aesResult.outputPath);
 
-                    if (extractResult.success && extractResult.data.Contains(testData))
+                    if (extractResult.success && extractResult.data == testData)
                     {
                         Log($"    AES: OK");
                         _results.Add(new TestResult
@@ -338,7 +425,7 @@ namespace MetaHide.tests
                     }
                     else
                     {
-                        Log($"    AES: Ошибка");
+                        Log($"    AES: Ошибка - ожидалось '{testData}', получено '{extractResult.data}'");
                         _results.Add(new TestResult
                         {
                             ImageName = fileName,

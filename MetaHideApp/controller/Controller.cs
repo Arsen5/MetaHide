@@ -24,6 +24,16 @@ namespace MetaHide.controller
             // Подписываемся на новые события для шифрования и сжатия
             _view.EncryptionSettingsChanged += OnEncryptionSettingsChanged;
             _view.CompressionSettingsChanged += OnCompressionSettingsChanged;
+
+            // ПОДПИСКА НА ВЫБОР МЕТОДА
+            _view.MethodTypeChanged += OnMethodTypeChanged;
+        }
+
+        // НОВЫЙ МЕТОД: обработка выбора метода стеганографии
+        private void OnMethodTypeChanged(string methodType)
+        {
+            _model.SetMethod(methodType);
+            _view.UpdateStatus($"Выбран метод: {methodType}");
         }
 
         private void OnHideRequested(string imagePath, string text)
@@ -62,25 +72,22 @@ namespace MetaHide.controller
                 return;
             }
 
-            // ИСПРАВЛЕНИЕ: Запрашиваем пароль ТОЛЬКО если выбрано шифрование
             string? password = null;
             if (_model.GetEncryptionType() != EncryptionModel.EncryptionType.None)
             {
                 password = _view.ShowPasswordDialog();
                 if (password == null)
                 {
-                    return; // Пользователь отменил ввод пароля
+                    return;
                 }
             }
 
-            // Устанавливаем пароль в модель (если шифрование не выбрано, пароль не используется)
             _model.SetEncryptionSettings(_model.GetEncryptionType(), password ?? "");
 
             var result = _model.ExtractData(imagePath);
 
             if (result.success)
             {
-                _view.TextWindow();
                 _view.ShowExtractedData(result.data);
                 _view.UpdateStatus(result.message);
             }
@@ -95,11 +102,10 @@ namespace MetaHide.controller
         private void OnModeChangedRequested(bool isHidden)
         {
             _model.SetHiddenMode(isHidden);
-            string modeName = isHidden ? "Скрытый (данные в конец файла)" : "Обычный (ImageDescription)";
+            string modeName = isHidden ? "Скрытый (данные в конец файла)" : "Обычный (ImageDescription/XMP)";
             _view.UpdateStatus($"Режим: {modeName}");
         }
 
-        // Новые методы для обработки настроек шифрования и сжатия
         private void OnEncryptionSettingsChanged(EncryptionModel.EncryptionType type, string password)
         {
             _model.SetEncryptionSettings(type, password);

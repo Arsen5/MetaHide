@@ -15,9 +15,12 @@ public partial class View
     public event Action<string>? ExtractRequested;
     public event Action<bool>? ModeChangedRequested;
 
-    // НОВЫЕ СОБЫТИЯ для шифрования и сжатия
+    // События для шифрования и сжатия
     public event Action<EncryptionModel.EncryptionType, string>? EncryptionSettingsChanged;
     public event Action<bool, int>? CompressionSettingsChanged;
+
+    // Событие для выбора метода стеганографии
+    public event Action<string>? MethodTypeChanged;
 
     private Button? btnSelectImage;
     private Button? btnHide;
@@ -51,11 +54,6 @@ public partial class View
             lblStatus.Invoke((MethodInvoker)(() => lblStatus.Text = $"Файл: {fileName}"));
     }
 
-    public void ShowExtractedData(string data)
-    {
-        if (txt != null)
-            txt.Invoke((MethodInvoker)(() => txt.Text = data));
-    }
 
     public string GetSelectedImagePath() => _selectedImagePath;
 
@@ -65,7 +63,6 @@ public partial class View
         UpdateFileName(Path.GetFileName(path));
     }
 
-    // НОВЫЙ МЕТОД: для получения пароля при извлечении
     public string? ShowPasswordDialog()
     {
         using (Form passwordForm = new Form())
@@ -118,7 +115,7 @@ public partial class View
             }
             else
             {
-                return null; // Пользователь отменил
+                return null;
             }
         }
     }

@@ -2,8 +2,6 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
-
-using System.ComponentModel;
 using MetaHide.model;
 
 namespace MetaHide.view;
@@ -13,39 +11,38 @@ public partial class View
     public Panel MainPanel;
     public bool ChosenStatus;
     private Label cancel;
-    private MyCustomToggleBtn checkBox;
 
-    // Новые элементы для шифрования и сжатия
+    // Элементы для шифрования и сжатия
     private ComboBox encryptionComboBox;
     private TextBox passwordTextBox;
     private CheckBox compressionCheckBox;
     private TextBox thresholdTextBox;
 
-    // Метод CreateInterface (существующий код) + новые элементы
+    // Элемент для выбора метода
+    private ComboBox methodComboBox;
+
     private void CreateInterface()
     {
-        // Добавьте эту кнопку в конец метода CreateInterface, перед return или в панель footer
+        // Кнопка тестов
         var testButton = new Button
         {
             Text = "Запустить тесты",
             BackColor = ColorTranslator.FromHtml("#2196F3"),
             ForeColor = Color.White,
-            Font = new System.Drawing.Font("Inter", 11),
+            Font = new Font("Inter", 11),
             Size = new Size(160, 40),
-            Location = new Point(870, 510), // Расположите где удобно
+            Location = new Point(870, 510),
             Cursor = Cursors.Hand
         };
 
         testButton.Click += (s, e) =>
         {
-            // Запускаем тесты в отдельном потоке
             System.Threading.Tasks.Task.Run(() =>
             {
                 try
                 {
                     var tester = new MetaHide.tests.SteganographyTester();
                     tester.RunTests();
-
                     MessageBox.Show("Тесты завершены! Проверьте консоль для результатов.",
                                   "Тестирование", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
@@ -58,26 +55,7 @@ public partial class View
         };
 
         form.Controls.Add(testButton);
-        var shifr = new Label
-        {
-            Location = new Point(30, 480),
-            AutoSize = true,
-            Text = "Сделать данные скрытыми?",
-            Font = new Font("Inter", 11, FontStyle.Bold),
-            ForeColor = Color.Gray
-        };
-        checkBox = new MyCustomToggleBtn
-        {
-            Size = new Size(50, 22),
-            Location = new Point(270, 480),
-            Cursor = Cursors.Hand,
-        };
-        checkBox.CheckedChanged += (s, e) =>
-        {
-            bool isHidden = checkBox.Checked; // true = скрытый, false = видимый
-            ModeChangedRequested?.Invoke(isHidden);
-            UpdateStatus(isHidden ? "Режим: Скрытый (не видно в свойствах)" : "Режим: Обычный (видно в свойствах)");
-        };
+
         var header = new Panel
         {
             Dock = DockStyle.Top,
@@ -128,7 +106,7 @@ public partial class View
         var instr = new Label
         {
             Location = new Point(20, 40),
-            Text = "MetaHide позволяет безопасно скрывать\r\nтекстовые сообщения внутри графических\r\nфайлов (стеганография) и извлекать их\r\nобратно. Все операции происходят локально\r\nв вашем браузере.",
+            Text = "MetaHide позволяет безопасно скрывать\r\nтекстовые сообщения внутри графических\r\nфайлов (стеганография) и извлекать их\r\nобратно. Все операции происходят локально.",
             Font = new Font("Inter", 9),
             ForeColor = ColorTranslator.FromHtml("#555555"),
             AutoSize = true,
@@ -147,14 +125,62 @@ public partial class View
         {
             Location = new Point(20, 160),
             Text = "• Нажмите «выбор файла» или перетащите\r\nизображение (.png или .jpg) в центральную\r\nобласть.\r\n" +
+            "• Выберите метод скрытия.\r\n" +
             "• После загрузки нажмите кнопку\r\n«зашифровать» или «расшифровать»\r\nв нижней панели.\r\n" +
-            "• Если вы выбрали «зашифровать»,\r\nто в появившемся поле введите текст,\r\nкоторый хотите скрыть.\r\n Если вы выбрали «расшифровать»,\r\nто сообщение появится в поле.\r\n" +
-            "• Нажмте Enter, если\r\nвы выбрали «зашифровать»\r\n" +
+            "• Если вы выбрали «зашифровать»,\r\nто в появившемся поле введите текст,\r\nкоторый хотите скрыть.\r\n" +
             "• Новая картинка появится\r\n на Рабочем столе",
             Font = new Font("Inter", 9),
             ForeColor = ColorTranslator.FromHtml("#555555"),
             AutoSize = true,
         };
+
+        // ========== ВЫБОР МЕТОДА ==========
+        var methodPanel = new Panel
+        {
+            Location = new Point(30, 420),
+            Size = new Size(320, 45),
+            BackColor = Color.White,
+            BorderStyle = BorderStyle.FixedSingle,
+            Padding = new Padding(10)
+        };
+
+        var methodLabel = new Label
+        {
+            Text = "Метод скрытия:",
+            Font = new Font("Inter", 10, FontStyle.Bold),
+            ForeColor = Color.Gray,
+            Location = new Point(5, 12),
+            AutoSize = true
+        };
+
+        methodComboBox = new ComboBox
+        {
+            Location = new Point(120, 10),
+            Size = new Size(180, 25),
+            DropDownStyle = ComboBoxStyle.DropDownList
+        };
+        methodComboBox.Items.AddRange(new object[] {
+            "Обычный (видно в свойствах)",
+            "Скрытый (маркер в конец)",
+            "LSB (PNG/BMP, в пикселях)"
+        });
+        methodComboBox.SelectedIndex = 0;
+
+        methodComboBox.SelectedIndexChanged += (s, e) =>
+        {
+            int index = methodComboBox.SelectedIndex;
+            string methodType = index == 0 ? "exif" : (index == 1 ? "marker" : "lsb");
+            MethodTypeChanged?.Invoke(methodType);
+
+            // Отправляем режим скрытия (только для метода "Скрытый")
+            bool isHidden = (index == 1);
+            ModeChangedRequested?.Invoke(isHidden);
+
+            UpdateStatus($"Метод: {methodComboBox.Text}");
+        };
+
+        methodPanel.Controls.Add(methodLabel);
+        methodPanel.Controls.Add(methodComboBox);
 
         // ========== DROP PANEL ==========
         MainPanel = new Panel
@@ -233,10 +259,9 @@ public partial class View
             AutoSize = true,
         };
 
-        // ========== КНОПКИ В ФУТЕРЕ (ТОЧНО КАК В ОРИГИНАЛЕ) ==========
         btnHide = new Button
         {
-            Text = "Зашифровать",  // ← исправлено название
+            Text = "Зашифровать",
             BackColor = ColorTranslator.FromHtml("#FF7F50"),
             ForeColor = Color.White,
             Font = new Font("Inter", 13),
@@ -273,7 +298,6 @@ public partial class View
                 MessageBox.Show("Сначала выберите изображение!", "Внимание", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
-            // УБИРАЕМ запрос пароля здесь - оставляем только в Controller
             ExtractRequested?.Invoke(_selectedImagePath);
         };
 
@@ -292,16 +316,13 @@ public partial class View
         footerFile.Controls.Add(t1);
         footerFile.Controls.Add(lblStatus);
 
-        form.Controls.Add(shifr);
-        form.Controls.Add(checkBox);
+        form.Controls.Add(methodPanel);
         form.Controls.Add(MainPanel);
         form.Controls.Add(footer);
         form.Controls.Add(instruction);
         form.Controls.Add(header);
 
-        // ========== ДОБАВЛЯЕМ НОВЫЕ ЭЛЕМЕНТЫ ЗДЕСЬ ==========
-
-        // Панель шифрования
+        // ========== ПАНЕЛЬ ШИФРОВАНИЯ ==========
         var encryptionPanel = new Panel
         {
             Location = new Point(30, 510),
@@ -346,7 +367,6 @@ public partial class View
             PlaceholderText = "Введите пароль"
         };
 
-        // Обработчики событий для шифрования
         encryptionComboBox.SelectedIndexChanged += (s, e) =>
         {
             var type = encryptionComboBox.SelectedIndex switch
@@ -356,7 +376,6 @@ public partial class View
                 3 => EncryptionModel.EncryptionType.AES256,
                 _ => EncryptionModel.EncryptionType.None
             };
-
             EncryptionSettingsChanged?.Invoke(type, passwordTextBox.Text);
         };
 
@@ -369,7 +388,6 @@ public partial class View
                 3 => EncryptionModel.EncryptionType.AES256,
                 _ => EncryptionModel.EncryptionType.None
             };
-
             EncryptionSettingsChanged?.Invoke(type, passwordTextBox.Text);
         };
 
@@ -377,7 +395,7 @@ public partial class View
             encryptionLabel, encryptionComboBox, passwordLabel, passwordTextBox
         });
 
-        // Панель сжатия
+        // ========== ПАНЕЛЬ СЖАТИЯ ==========
         var compressionPanel = new Panel
         {
             Location = new Point(550, 510),
@@ -419,7 +437,6 @@ public partial class View
             Text = "1"
         };
 
-        // Обработчики событий для сжатия
         compressionCheckBox.CheckedChanged += (s, e) =>
         {
             int threshold = 1;
@@ -438,7 +455,6 @@ public partial class View
             compressionLabel, compressionCheckBox, thresholdLabel, thresholdTextBox
         });
 
-        // Добавляем новые панели в форму
         form.Controls.Add(encryptionPanel);
         form.Controls.Add(compressionPanel);
     }
@@ -499,15 +515,13 @@ public partial class View
         MainPanel.Controls.Add(image);
         MainPanel.Controls.Add(text);
         MainPanel.Controls.Add(btnSelectImage);
-
-        form.Controls.Add(MainPanel);
     }
 
     private void SelectFile()
     {
         using (OpenFileDialog ofd = new OpenFileDialog())
         {
-            ofd.Filter = "Изображения|*.jpg;*.jpeg;*.png";
+            ofd.Filter = "Изображения|*.jpg;*.jpeg;*.png;*.bmp";
             ofd.Title = "Выберите изображение";
             if (ofd.ShowDialog() == DialogResult.OK)
             {
@@ -559,7 +573,7 @@ public partial class View
             Panel buttonContainer = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 70, // Высота контейнера (чуть больше кнопки для отступов)
+                Height = 70,
             };
 
             btnSelectImage = new Button
@@ -569,13 +583,11 @@ public partial class View
                 BackColor = ColorTranslator.FromHtml("#DDDDDD"),
                 ForeColor = ColorTranslator.FromHtml("#666666"),
                 Font = new Font("Inter", 11),
-                // Вместо Dock используем Location и Anchor
                 Location = new Point((buttonContainer.Width - 160) / 2, 10),
-                Anchor = AnchorStyles.Top // Чтобы кнопка не "улетала" при изменении размеров
+                Anchor = AnchorStyles.Top
             };
             btnSelectImage.Click += (s, e) => SelectFile();
             buttonContainer.Controls.Add(btnSelectImage);
-
 
             MainPanel.Controls.Add(buttonContainer);
             MainPanel.Controls.Add(label);
@@ -601,7 +613,7 @@ public partial class View
 
         txt = new TextBox
         {
-            PlaceholderText = "Введите текст, который нужно скрыть в файле, или здесь появится извлеченный текст...",
+            PlaceholderText = "Введите текст, который нужно скрыть в файле...",
             Dock = DockStyle.Top,
             Height = 330,
             Multiline = true,
@@ -616,31 +628,76 @@ public partial class View
             Dock = DockStyle.Top,
             Cursor = Cursors.Hand
         };
+
         txt.KeyDown += (e, s) =>
         {
             if (s.KeyCode == Keys.Enter)
             {
-                // Получаем текущие настройки шифрования из UI
                 var encryptionType = GetSelectedEncryptionType();
                 var password = GetPassword();
-
-                // Устанавливаем настройки в модель через событие
                 EncryptionSettingsChanged?.Invoke(encryptionType, password);
-
                 HideRequested?.Invoke(_selectedImagePath, txt.Text);
             }
         };
+
         cancel.Click += (e, s) => MainWindow();
         MainPanel.Controls.Add(cancel);
         MainPanel.Controls.Add(txt);
         MainPanel.Controls.Add(label);
     }
 
-    // Вспомогательные методы для получения настроек из UI
+    public void ShowExtractedData(string data)
+    {
+        if (MainPanel.InvokeRequired)
+        {
+            MainPanel.Invoke((MethodInvoker)(() => ShowExtractedData(data)));
+            return;
+        }
+
+        MainPanel.Controls.Clear();
+        MainPanel.Padding = new Padding(30);
+
+        var label = new Label
+        {
+            Text = "Извлечённое сообщение",
+            ForeColor = ColorTranslator.FromHtml("#333333"),
+            Font = new Font("Inter", 14, FontStyle.Bold),
+            Dock = DockStyle.Top,
+            Height = 40
+        };
+
+        var textBox = new TextBox
+        {
+            Text = string.IsNullOrEmpty(data) ? "Данные не найдены" : data,
+            Dock = DockStyle.Top,
+            Height = 330,
+            Multiline = true,
+            ReadOnly = true,
+            Font = new Font("Inter", 11),
+            ScrollBars = ScrollBars.Vertical
+        };
+
+        var backButton = new Button
+        {
+            Text = "Назад",
+            BackColor = ColorTranslator.FromHtml("#FF7F50"),
+            ForeColor = Color.White,
+            Font = new Font("Inter", 11),
+            Size = new Size(120, 35),
+            Location = new Point(330, 380),
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand
+        };
+        backButton.Click += (s, e) => MainWindow();
+
+        MainPanel.Controls.Add(backButton);
+        MainPanel.Controls.Add(textBox);
+        MainPanel.Controls.Add(label);
+    }
+
     private EncryptionModel.EncryptionType GetSelectedEncryptionType()
     {
         if (encryptionComboBox == null) return EncryptionModel.EncryptionType.None;
-
         return encryptionComboBox.SelectedIndex switch
         {
             1 => EncryptionModel.EncryptionType.XOR,

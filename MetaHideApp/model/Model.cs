@@ -12,7 +12,10 @@ public class Model : ISteganography
     private ISteganography _activeHandler;
     private bool _hiddenMode = false;
 
-    // Новые поля для шифрования и сжатия
+    // Поле для выбранного метода стеганографии
+    private string _selectedMethod = "exif"; // exif, marker, lsb
+
+    // Поля для шифрования и сжатия
     private readonly EncryptionModel _encryptionModel;
     private readonly CompressionModel _compressionModel;
     private EncryptionModel.EncryptionType _encryptionType = EncryptionModel.EncryptionType.None;
@@ -25,21 +28,26 @@ public class Model : ISteganography
         _handlers = new List<ISteganography>
         {
             new JpegSteganography(),
-            new PngSteganography()
+            new PngSteganography(),
+            new LSBSteganography()
         };
 
         _encryptionModel = new EncryptionModel();
         _compressionModel = new CompressionModel();
     }
 
-    // Методы для настройки шифрования и сжатия
+    public void SetMethod(string method)
+    {
+        _selectedMethod = method;
+        System.Diagnostics.Debug.WriteLine($"Метод установлен: {_selectedMethod}");
+    }
+
     public void SetEncryptionSettings(EncryptionModel.EncryptionType type, string password)
     {
         _encryptionType = type;
         _encryptionPassword = password;
     }
 
-    // НОВЫЙ МЕТОД: для получения текущего типа шифрования
     public EncryptionModel.EncryptionType GetEncryptionType()
     {
         return _encryptionType;
@@ -64,86 +72,65 @@ public class Model : ISteganography
 
     public (bool success, string message, string outputPath) HideData(string imagePath, string data)
     {
-        _activeHandler = GetHandler(imagePath);
+        _activeHandler = GetHandlerByMethod(imagePath);
+
         if (_activeHandler == null)
-            return (false, "Неподдерживаемый формат файла (только .jpg, .jpeg, .png)", null);
+            return (false, "Неподдерживаемый формат файла для выбранного метода", null);
 
         try
         {
-            // Получаем размер исходного файла
             long sourceSize = new FileInfo(imagePath).Length;
-
-            // 1. Подготовка данных
             byte[] dataBytes = Encoding.UTF8.GetBytes(data);
 
-            // 2. Сжатие (ТОЛЬКО если включено И выбрано шифрование)
             if (_useCompression && _encryptionType != EncryptionModel.EncryptionType.None)
             {
                 dataBytes = _compressionModel.Compress(dataBytes, _compressionThresholdKB);
             }
 
-            // 3. Шифрование (ТОЛЬКО если выбрано шифрование)
             if (_encryptionType != EncryptionModel.EncryptionType.None)
             {
                 dataBytes = _encryptionModel.Encrypt(dataBytes, _encryptionPassword, _encryptionType);
             }
 
-            // 4. ФОРМИРОВАНИЕ ДАННЫХ ДЛЯ ВСТРАИВАНИЯ
             string processedData;
             if (_encryptionType == EncryptionModel.EncryptionType.None)
             {
-                // ВИДИМЫЙ РЕЖИМ: встраиваем текст напрямую (без Base64)
                 processedData = data;
             }
             else
             {
-                // ШИФРОВАННЫЙ РЕЖИМ: используем Base64
                 processedData = Convert.ToBase64String(dataBytes);
             }
 
-            // 5. Встраивание в изображение
             _activeHandler.SetHiddenMode(_hiddenMode);
             var result = _activeHandler.HideData(imagePath, processedData);
 
-            // Логирование с размерами файлов
             if (result.success)
             {
-                // Получаем размер результирующего файла
                 long resultSize = new FileInfo(result.outputPath).Length;
-
-                string encryptionInfo = _encryptionType == EncryptionModel.EncryptionType.None ?
-                    "без шифрования" : $"шифрование: {_encryptionType}";
-                string compressionInfo = _useCompression ? "сжатие: да" : "сжатие: нет";
-
                 LogOperation("Встраивание", imagePath,
-                    $"Метод: {_activeHandler.GetType().Name}, {encryptionInfo}, {compressionInfo}",
+                    $"Метод: {_activeHandler.GetType().Name}, выбранный: {_selectedMethod}",
                     "Успех", sourceSize, resultSize);
-            }
-            else
-            {
-                LogOperation("Ошибка встраивания", imagePath, "Подготовка данных", result.message, sourceSize, 0);
             }
 
             return result;
         }
         catch (Exception ex)
         {
-            LogOperation("Ошибка встраивания", imagePath, "Подготовка данных", ex.Message, 0, 0);
             return (false, $"Ошибка: {ex.Message}", null);
         }
     }
 
     public (bool success, string message, string data) ExtractData(string imagePath)
     {
-        _activeHandler = GetHandler(imagePath);
+        _activeHandler = GetHandlerByMethod(imagePath);
+
         if (_activeHandler == null)
-            return (false, "Неподдерживаемый формат файла", null);
+            return (false, "Неподдерживаемый формат файла для выбранного метода", null);
 
         try
         {
-            // Получаем размер файла
             long sourceSize = new FileInfo(imagePath).Length;
-
             _activeHandler.SetHiddenMode(_hiddenMode);
             var result = _activeHandler.ExtractData(imagePath);
 
@@ -152,13 +139,16 @@ public class Model : ISteganography
                 string extractedData = result.data;
                 string finalText;
 
-                // Проверяем, является ли извлеченное значение Base64
-                if (IsBase64String(extractedData))
+                // Для LSB данные не проходят через шифрование/Base64
+                if (_selectedMethod == "lsb")
                 {
-                    // Это Base64 (шифрованный режим)
+                    // LSB возвращает чистый UTF-8 текст
+                    finalText = extractedData;
+                }
+                else if (IsBase64String(extractedData))
+                {
                     byte[] extractedBytes = Convert.FromBase64String(extractedData);
 
-                    // 2. Дешифрование (ТОЛЬКО если выбрано шифрование)
                     byte[] decryptedBytes;
                     if (_encryptionType != EncryptionModel.EncryptionType.None)
                     {
@@ -166,11 +156,9 @@ public class Model : ISteganography
                     }
                     else
                     {
-                        // Если шифрование не выбрано, но данные в Base64 - это ошибка
                         decryptedBytes = extractedBytes;
                     }
 
-                    // 3. Распаковка (ТОЛЬКО если было сжатие и выбрано шифрование)
                     byte[] finalBytes = decryptedBytes;
                     if (_useCompression && _encryptionType != EncryptionModel.EncryptionType.None)
                     {
@@ -188,42 +176,95 @@ public class Model : ISteganography
                 }
                 else
                 {
-                    // Это обычный текст (видимый режим)
                     finalText = extractedData;
                 }
-
-                string encryptionInfo = _encryptionType == EncryptionModel.EncryptionType.None ?
-                    "без дешифрования" : $"дешифрование: {_encryptionType}";
-
-                LogOperation("Извлечение", imagePath,
-                    $"Метод: {_activeHandler.GetType().Name}, {encryptionInfo}", "Успех", sourceSize, 0);
 
                 return (true, result.message, finalText);
             }
             else
             {
-                LogOperation("Ошибка извлечения", imagePath, "Обработка данных", result.message, sourceSize, 0);
                 return result;
             }
         }
         catch (Exception ex)
         {
-            LogOperation("Ошибка извлечения", imagePath, "Обработка данных", ex.Message, 0, 0);
             return (false, $"Ошибка: {ex.Message}", null);
         }
     }
 
-    // Вспомогательный метод для проверки Base64
+    private ISteganography GetHandlerByMethod(string filePath)
+    {
+        string ext = Path.GetExtension(filePath).ToLower();
+
+        System.Diagnostics.Debug.WriteLine($"GetHandlerByMethod: selectedMethod={_selectedMethod}, ext={ext}");
+
+        if (_selectedMethod == "lsb")
+        {
+            if (ext == ".png" || ext == ".bmp")
+            {
+                var lsb = new LSBSteganography();
+                System.Diagnostics.Debug.WriteLine("Возвращаем LSBSteganography");
+                return lsb;
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("LSB не поддерживает JPG");
+                return null;
+            }
+        }
+
+        if (_selectedMethod == "marker")
+        {
+            if (ext == ".jpg" || ext == ".jpeg")
+            {
+                var jpeg = new JpegSteganography();
+                System.Diagnostics.Debug.WriteLine("Возвращаем JpegSteganography (маркер)");
+                return jpeg;
+            }
+            else if (ext == ".png")
+            {
+                var png = new PngSteganography();
+                System.Diagnostics.Debug.WriteLine("Возвращаем PngSteganography (маркер)");
+                return png;
+            }
+        }
+
+        if (_selectedMethod == "exif")
+        {
+            foreach (var handler in _handlers)
+            {
+                if (handler.SupportsFormat(filePath))
+                {
+                    System.Diagnostics.Debug.WriteLine($"Возвращаем {handler.GetType().Name} (обычный)");
+                    return handler;
+                }
+            }
+        }
+
+        foreach (var handler in _handlers)
+        {
+            if (handler.SupportsFormat(filePath))
+                return handler;
+        }
+
+        return null;
+    }
+
     private bool IsBase64String(string base64)
     {
         if (string.IsNullOrEmpty(base64))
             return false;
 
-        // Base64 должен быть кратен 4 и содержать только допустимые символы
+        // Быстрая проверка: если строка содержит непечатаемые символы - это не Base64
+        foreach (char c in base64)
+        {
+            if (c < 32 || c > 126)
+                return false;
+        }
+
         if (base64.Length % 4 != 0)
             return false;
 
-        // Проверяем допустимые символы Base64
         foreach (char c in base64)
         {
             if (!((c >= 'A' && c <= 'Z') ||
@@ -240,7 +281,7 @@ public class Model : ISteganography
 
     public bool HasHiddenData(string imagePath)
     {
-        var handler = GetHandler(imagePath);
+        var handler = GetHandlerByMethod(imagePath);
         if (handler == null) return false;
         handler.SetHiddenMode(_hiddenMode);
         return handler.HasHiddenData(imagePath);
@@ -248,7 +289,7 @@ public class Model : ISteganography
 
     public string GetAllExifFields(string imagePath)
     {
-        var handler = GetHandler(imagePath);
+        var handler = GetHandlerByMethod(imagePath);
         if (handler == null) return "Неподдерживаемый формат файла";
         handler.SetHiddenMode(_hiddenMode);
         return handler.GetAllExifFields(imagePath);
@@ -256,18 +297,9 @@ public class Model : ISteganography
 
     public bool SupportsFormat(string filePath)
     {
-        return GetHandler(filePath) != null;
+        return GetHandlerByMethod(filePath) != null;
     }
 
-    private ISteganography GetHandler(string filePath)
-    {
-        foreach (var handler in _handlers)
-            if (handler.SupportsFormat(filePath))
-                return handler;
-        return null;
-    }
-
-    // ИЗМЕНЕННЫЙ МЕТОД: добавлены параметры размеров файлов
     private void LogOperation(string operation, string file, string method, string result, long sourceSize, long resultSize)
     {
         try
