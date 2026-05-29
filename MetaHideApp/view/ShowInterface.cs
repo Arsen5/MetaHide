@@ -124,8 +124,8 @@ public partial class View
         var instr2 = new Label
         {
             Location = new Point(20, 160),
-            Text = "• Нажмите «выбор файла» или перетащите\r\nизображение (.png или .jpg) в центральную\r\nобласть.\r\n" +
-            "• Выберите метод скрытия.\r\n" +
+            Text = "• Нажмите «выбор файла» или перетащите\r\nизображение в центральную область.\r\n" +
+            "• Доступные методы зависят от формата файла.\r\n" +
             "• После загрузки нажмите кнопку\r\n«зашифровать» или «расшифровать»\r\nв нижней панели.\r\n" +
             "• Если вы выбрали «зашифровать»,\r\nто в появившемся поле введите текст,\r\nкоторый хотите скрыть.\r\n" +
             "• Новая картинка появится\r\n на Рабочем столе",
@@ -157,23 +157,31 @@ public partial class View
         {
             Location = new Point(120, 10),
             Size = new Size(180, 25),
-            DropDownStyle = ComboBoxStyle.DropDownList
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            Enabled = false
         };
-        methodComboBox.Items.AddRange(new object[] {
-            "Обычный (видно в свойствах)",
-            "Скрытый (маркер в конец)",
-            "LSB (PNG/BMP, в пикселях)"
-        });
-        methodComboBox.SelectedIndex = 0;
+        methodComboBox.Items.Add("Сначала выберите файл");
 
         methodComboBox.SelectedIndexChanged += (s, e) =>
         {
             int index = methodComboBox.SelectedIndex;
-            string methodType = index == 0 ? "exif" : (index == 1 ? "marker" : "lsb");
+            string selectedText = methodComboBox.SelectedItem.ToString();
+            string methodType;
+
+            if (selectedText.Contains("Обычный"))
+                methodType = "exif";
+            else if (selectedText.Contains("Скрытый") && !selectedText.Contains("LSB"))
+                methodType = "marker";
+            else if (selectedText.Contains("LSB"))
+                methodType = "lsb";
+            else if (selectedText.Contains("GIF"))
+                methodType = "gif";
+            else
+                methodType = "exif";
+
             MethodTypeChanged?.Invoke(methodType);
 
-            // Отправляем режим скрытия (только для метода "Скрытый")
-            bool isHidden = (index == 1);
+            bool isHidden = (methodType == "marker");
             ModeChangedRequested?.Invoke(isHidden);
 
             UpdateStatus($"Метод: {methodComboBox.Text}");
@@ -459,6 +467,57 @@ public partial class View
         form.Controls.Add(compressionPanel);
     }
 
+    // Метод обновления доступных методов в зависимости от типа файла
+    private void UpdateAvailableMethods(string filePath)
+    {
+        string ext = System.IO.Path.GetExtension(filePath).ToLower();
+
+        methodComboBox.Items.Clear();
+
+        switch (ext)
+        {
+            case ".jpg":
+            case ".jpeg":
+                methodComboBox.Items.Add("Обычный (видно в свойствах)");
+                methodComboBox.Items.Add("Скрытый (маркер в конец)");
+                methodComboBox.SelectedIndex = 0;
+                methodComboBox.Enabled = true;
+                MethodTypeChanged?.Invoke("exif");
+                break;
+
+            case ".png":
+                methodComboBox.Items.Add("Обычный (видно в свойствах)");
+                methodComboBox.Items.Add("Скрытый (маркер в конец)");
+                methodComboBox.Items.Add("LSB (в пикселях)");
+                methodComboBox.SelectedIndex = 0;
+                methodComboBox.Enabled = true;
+                MethodTypeChanged?.Invoke("exif");
+                break;
+
+            case ".bmp":
+                methodComboBox.Items.Add("LSB (в пикселях)");
+                methodComboBox.Items.Add("Скрытый (маркер в конец)");
+                methodComboBox.SelectedIndex = 0;
+                methodComboBox.Enabled = true;
+                MethodTypeChanged?.Invoke("lsb");
+                break;
+
+            case ".gif":
+                methodComboBox.Items.Add("Скрытый (маркер в конец)");
+                methodComboBox.Items.Add("GIF (комментарий)");
+                methodComboBox.SelectedIndex = 0;
+                methodComboBox.Enabled = true;
+                MethodTypeChanged?.Invoke("marker");
+                break;
+
+            default:
+                methodComboBox.Items.Add("Формат не поддерживается");
+                methodComboBox.SelectedIndex = 0;
+                methodComboBox.Enabled = false;
+                break;
+        }
+    }
+
     private void MainWindow()
     {
         MainPanel.Controls.Clear();
@@ -471,16 +530,24 @@ public partial class View
         MainPanel.DragDrop += (s, e) =>
         {
             var files = (string[])e.Data.GetData(DataFormats.FileDrop);
-            if (files != null && files.Length > 0 && (files[0].EndsWith(".jpg") || files[0].EndsWith(".jpeg") || files[0].EndsWith(".png")))
+            if (files != null && files.Length > 0)
             {
-                _selectedImagePath = files[0];
-                UpdateStatus($"Выбран файл: {System.IO.Path.GetFileName(files[0])}");
-                ChosenStatus = true;
-                SelectedFileWindow();
-            }
-            else
-            {
-                UpdateStatus("Пожалуйста, выберите JPG или PNG файл");
+                string ext = System.IO.Path.GetExtension(files[0]).ToLower();
+                if (ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".bmp" || ext == ".gif")
+                {
+                    _selectedImagePath = files[0];
+                    UpdateStatus($"Выбран файл: {System.IO.Path.GetFileName(files[0])}");
+                    ChosenStatus = true;
+
+                    // Обновляем доступные методы
+                    UpdateAvailableMethods(files[0]);
+
+                    SelectedFileWindow();
+                }
+                else
+                {
+                    UpdateStatus("Пожалуйста, выберите JPG, PNG, BMP или GIF файл");
+                }
             }
         };
 
@@ -521,13 +588,17 @@ public partial class View
     {
         using (OpenFileDialog ofd = new OpenFileDialog())
         {
-            ofd.Filter = "Изображения|*.jpg;*.jpeg;*.png;*.bmp";
+            ofd.Filter = "Изображения|*.jpg;*.jpeg;*.png;*.bmp;*.gif";
             ofd.Title = "Выберите изображение";
             if (ofd.ShowDialog() == DialogResult.OK)
             {
                 SetSelectedImagePath(ofd.FileName);
                 UpdateStatus($"Выбран файл: {System.IO.Path.GetFileName(ofd.FileName)}");
                 ChosenStatus = true;
+
+                // Обновляем доступные методы
+                UpdateAvailableMethods(ofd.FileName);
+
                 SelectedFileWindow();
             }
         }

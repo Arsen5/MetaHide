@@ -30,7 +30,7 @@ namespace MetaHide.tests
             if (imageFiles.Count == 0)
             {
                 Log("Нет изображений в папке TestImages!");
-                Log("Добавьте PNG и JPG файлы в папку TestImages на рабочем столе");
+                Log("Добавьте PNG, JPG, BMP, GIF файлы в папку TestImages на рабочем столе");
                 return;
             }
 
@@ -39,11 +39,19 @@ namespace MetaHide.tests
 
             foreach (var imageFile in imageFiles)
             {
-                TestImage(imageFile);
+                string ext = Path.GetExtension(imageFile).ToLower();
+                if (ext == ".png" || ext == ".jpg" || ext == ".jpeg")
+                {
+                    TestImage(imageFile);
+                }
             }
 
             // Отдельный тест LSB на PNG
             TestLsbOnPng();
+
+            // Тесты BMP и GIF
+            TestBmpFiles();
+            TestGifFiles();
 
             Log("=== ТЕСТЫ ЗАВЕРШЕНЫ ===");
             Log("");
@@ -61,6 +69,8 @@ namespace MetaHide.tests
             images.AddRange(Directory.GetFiles(_testImagesFolder, "*.png"));
             images.AddRange(Directory.GetFiles(_testImagesFolder, "*.jpg"));
             images.AddRange(Directory.GetFiles(_testImagesFolder, "*.jpeg"));
+            images.AddRange(Directory.GetFiles(_testImagesFolder, "*.bmp"));
+            images.AddRange(Directory.GetFiles(_testImagesFolder, "*.gif"));
             return images;
         }
 
@@ -455,6 +465,76 @@ namespace MetaHide.tests
             catch
             {
                 return false;
+            }
+        }
+
+        private void TestBmpFiles()
+        {
+            var bmpFiles = Directory.GetFiles(_testImagesFolder, "*.bmp");
+            if (bmpFiles.Length == 0)
+            {
+                Log("Нет BMP файлов для теста");
+                return;
+            }
+            Log("");
+            Log("=== ТЕСТ BMP (LSB) ===");
+            foreach (string bmpPath in bmpFiles)
+            {
+                string fileName = Path.GetFileName(bmpPath);
+                string testData = $"BMP Test {DateTime.Now:HHmmss}";
+                _model.SetMethod("lsb");
+                _model.SetHiddenMode(false);
+                _model.SetEncryptionSettings(EncryptionModel.EncryptionType.None, "");
+                _model.SetCompressionSettings(false, 1);
+                var hide = _model.HideData(bmpPath, testData);
+                if (hide.success)
+                {
+                    var extract = _model.ExtractData(hide.outputPath);
+                    if (extract.success && extract.data == testData)
+                        Log($"  {fileName}: ✓ ПРОЙДЕН");
+                    else
+                        Log($"  {fileName}: ✗ НЕ ПРОЙДЕН (извлечено: {extract.data})");
+                    try { File.Delete(hide.outputPath); } catch { }
+                }
+                else
+                {
+                    Log($"  {fileName}: Ошибка записи: {hide.message}");
+                }
+            }
+        }
+
+        private void TestGifFiles()
+        {
+            var gifFiles = Directory.GetFiles(_testImagesFolder, "*.gif");
+            if (gifFiles.Length == 0)
+            {
+                Log("Нет GIF файлов для теста");
+                return;
+            }
+            Log("");
+            Log("=== ТЕСТ GIF (комментарий) ===");
+            foreach (string gifPath in gifFiles)
+            {
+                string fileName = Path.GetFileName(gifPath);
+                string testData = $"GIF Test {DateTime.Now:HHmmss}";
+                _model.SetMethod("gif");
+                _model.SetHiddenMode(false);
+                _model.SetEncryptionSettings(EncryptionModel.EncryptionType.None, "");
+                _model.SetCompressionSettings(false, 1);
+                var hide = _model.HideData(gifPath, testData);
+                if (hide.success)
+                {
+                    var extract = _model.ExtractData(hide.outputPath);
+                    if (extract.success && extract.data == testData)
+                        Log($"  {fileName}: ✓ ПРОЙДЕН");
+                    else
+                        Log($"  {fileName}: ✗ НЕ ПРОЙДЕН (извлечено: {extract.data})");
+                    try { File.Delete(hide.outputPath); } catch { }
+                }
+                else
+                {
+                    Log($"  {fileName}: Ошибка записи: {hide.message}");
+                }
             }
         }
 

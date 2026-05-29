@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
@@ -20,32 +21,10 @@ namespace MetaHide.model
             return ext == ".png" || ext == ".bmp";
         }
 
-        // Метод для проверки максимальной ёмкости изображения в байтах
-        private int GetMaxCapacity(string imagePath)
-        {
-            using (Bitmap bmp = new Bitmap(imagePath))
-            {
-                // 24-битное RGB: ширина * высота * 3 канала / 8 бит = макс байт
-                // Вычитаем 4 байта для заголовка длины
-                return (bmp.Width * bmp.Height * 3) / 8 - 4;
-            }
-        }
-
         public (bool success, string message, string outputPath) HideData(string imagePath, string data)
         {
             try
             {
-                // Проверяем ёмкость перед записью
-                byte[] dataBytes = Encoding.UTF8.GetBytes(data);
-                int maxCapacity = GetMaxCapacity(imagePath);
-
-                bool isCapacityWarning = false;
-                if (dataBytes.Length > maxCapacity)
-                {
-                    isCapacityWarning = true;
-                    // Продолжаем, но с предупреждением
-                }
-
                 string outputPath = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
                     Path.GetFileNameWithoutExtension(imagePath) + "_hidden.png");
@@ -58,6 +37,7 @@ namespace MetaHide.model
                         g.DrawImage(bmp, 0, 0, bmp.Width, bmp.Height);
                     }
 
+                    byte[] dataBytes = Encoding.UTF8.GetBytes(data);
                     byte[] allBytes = new byte[4 + dataBytes.Length];
                     byte[] lenBytes = BitConverter.GetBytes(dataBytes.Length);
                     Array.Copy(lenBytes, 0, allBytes, 0, 4);
@@ -86,14 +66,7 @@ namespace MetaHide.model
                     rgbBmp.UnlockBits(bmpData);
                     rgbBmp.Save(outputPath, ImageFormat.Png);
                 }
-
-                string warningMessage = "";
-                if (isCapacityWarning)
-                {
-                    warningMessage = $" (ВНИМАНИЕ: изображение слишком маленькое! Макс. размер: {maxCapacity} байт, требуется: {dataBytes.Length} байт. Возможны помехи при извлечении.)";
-                }
-
-                return (true, $"Данные скрыты через LSB ({data.Length} символов){warningMessage}", outputPath);
+                return (true, $"Данные скрыты через LSB ({data.Length} символов)", outputPath);
             }
             catch (Exception ex)
             {
@@ -121,7 +94,7 @@ namespace MetaHide.model
                     System.Runtime.InteropServices.Marshal.Copy(bmpData.Scan0, pixels, 0, totalBytes);
                     rgbBmp.UnlockBits(bmpData);
 
-                    // Читаем все байты подряд
+                    // Читаем все байты подряд в список
                     List<byte> readBytes = new List<byte>();
                     int bitPos = 0;
                     byte currentByte = 0;
@@ -141,24 +114,12 @@ namespace MetaHide.model
                     if (readBytes.Count < 4)
                         return (false, "Недостаточно данных", null);
 
+                    // Первые 4 байта - длина
                     int dataLen = BitConverter.ToInt32(readBytes.GetRange(0, 4).ToArray(), 0);
-                    if (dataLen <= 0 || dataLen > 10000000)
+                    if (dataLen <= 0 || dataLen > readBytes.Count - 4)
                         return (false, "Некорректная длина", null);
 
-                    // Проверяем, хватает ли данных
-                    if (readBytes.Count < 4 + dataLen)
-                    {
-                        // Данные неполные — извлекаем то, что есть
-                        int availableBytes = readBytes.Count - 4;
-                        if (availableBytes > 0)
-                        {
-                            byte[] partialData = readBytes.GetRange(4, availableBytes).ToArray();
-                            string partialText = Encoding.UTF8.GetString(partialData);
-                            return (true, $"Извлечено частично ({availableBytes} из {dataLen} байт)", partialText);
-                        }
-                        return (false, "Недостаточно данных для извлечения", null);
-                    }
-
+                    // Извлекаем ровно dataLen байт
                     byte[] dataBytes = readBytes.GetRange(4, dataLen).ToArray();
                     string text = Encoding.UTF8.GetString(dataBytes);
                     return (true, $"Извлечено {dataLen} байт", text);

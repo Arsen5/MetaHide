@@ -12,10 +12,8 @@ public class Model : ISteganography
     private ISteganography _activeHandler;
     private bool _hiddenMode = false;
 
-    // Поле для выбранного метода стеганографии
-    private string _selectedMethod = "exif"; // exif, marker, lsb
+    private string _selectedMethod = "exif";
 
-    // Поля для шифрования и сжатия
     private readonly EncryptionModel _encryptionModel;
     private readonly CompressionModel _compressionModel;
     private EncryptionModel.EncryptionType _encryptionType = EncryptionModel.EncryptionType.None;
@@ -29,7 +27,9 @@ public class Model : ISteganography
         {
             new JpegSteganography(),
             new PngSteganography(),
-            new LSBSteganography()
+            new LSBSteganography(),
+            new BmpSteganography(),
+            new GifSteganography()
         };
 
         _encryptionModel = new EncryptionModel();
@@ -139,10 +139,8 @@ public class Model : ISteganography
                 string extractedData = result.data;
                 string finalText;
 
-                // Для LSB данные не проходят через шифрование/Base64
-                if (_selectedMethod == "lsb")
+                if (_selectedMethod == "lsb" || _selectedMethod == "bmp" || _selectedMethod == "gif")
                 {
-                    // LSB возвращает чистый UTF-8 текст
                     finalText = extractedData;
                 }
                 else if (IsBase64String(extractedData))
@@ -179,15 +177,23 @@ public class Model : ISteganography
                     finalText = extractedData;
                 }
 
+                LogOperation("Извлечение", imagePath,
+                    $"Метод: {_activeHandler.GetType().Name}, выбранный: {_selectedMethod}",
+                    "Успех", sourceSize, 0);
+
                 return (true, result.message, finalText);
             }
             else
             {
+                LogOperation("Извлечение", imagePath,
+                    $"Метод: {_activeHandler.GetType().Name}, выбранный: {_selectedMethod}",
+                    result.message, sourceSize, 0);
                 return result;
             }
         }
         catch (Exception ex)
         {
+            LogOperation("Ошибка извлечения", imagePath, "Обработка данных", ex.Message, 0, 0);
             return (false, $"Ошибка: {ex.Message}", null);
         }
     }
@@ -200,52 +206,43 @@ public class Model : ISteganography
 
         if (_selectedMethod == "lsb")
         {
-            if (ext == ".png" || ext == ".bmp")
-            {
-                var lsb = new LSBSteganography();
-                System.Diagnostics.Debug.WriteLine("Возвращаем LSBSteganography");
-                return lsb;
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine("LSB не поддерживает JPG");
-                return null;
-            }
+            if (ext == ".png")
+                return new LSBSteganography();
+            if (ext == ".bmp")
+                return new BmpSteganography();
+            return null;
+        }
+
+        if (_selectedMethod == "gif")
+        {
+            if (ext == ".gif")
+                return new GifSteganography();
+            return null;
         }
 
         if (_selectedMethod == "marker")
         {
             if (ext == ".jpg" || ext == ".jpeg")
-            {
-                var jpeg = new JpegSteganography();
-                System.Diagnostics.Debug.WriteLine("Возвращаем JpegSteganography (маркер)");
-                return jpeg;
-            }
-            else if (ext == ".png")
-            {
-                var png = new PngSteganography();
-                System.Diagnostics.Debug.WriteLine("Возвращаем PngSteganography (маркер)");
-                return png;
-            }
+                return new JpegSteganography();
+            if (ext == ".png")
+                return new PngSteganography();
+            if (ext == ".gif")
+                return new GifSteganography();
+            if (ext == ".bmp")
+                return new BmpSteganography();
+            return null;
         }
 
         if (_selectedMethod == "exif")
         {
             foreach (var handler in _handlers)
-            {
                 if (handler.SupportsFormat(filePath))
-                {
-                    System.Diagnostics.Debug.WriteLine($"Возвращаем {handler.GetType().Name} (обычный)");
                     return handler;
-                }
-            }
         }
 
         foreach (var handler in _handlers)
-        {
             if (handler.SupportsFormat(filePath))
                 return handler;
-        }
 
         return null;
     }
@@ -255,7 +252,6 @@ public class Model : ISteganography
         if (string.IsNullOrEmpty(base64))
             return false;
 
-        // Быстрая проверка: если строка содержит непечатаемые символы - это не Base64
         foreach (char c in base64)
         {
             if (c < 32 || c > 126)
@@ -322,7 +318,6 @@ public class Model : ISteganography
         }
         catch
         {
-            // Игнорируем ошибки логирования
         }
     }
 }

@@ -10,28 +10,24 @@ namespace MetaHide.controller
     {
         private Model _model;
         private View _view;
+        private string _currentMethod = "exif";
 
         public Controller(View view, Model model)
         {
             _model = model;
             _view = view;
 
-            // Подписываемся на существующие события
             _view.HideRequested += OnHideRequested;
             _view.ExtractRequested += OnExtractRequested;
             _view.ModeChangedRequested += OnModeChangedRequested;
-
-            // Подписываемся на новые события для шифрования и сжатия
             _view.EncryptionSettingsChanged += OnEncryptionSettingsChanged;
             _view.CompressionSettingsChanged += OnCompressionSettingsChanged;
-
-            // ПОДПИСКА НА ВЫБОР МЕТОДА
             _view.MethodTypeChanged += OnMethodTypeChanged;
         }
 
-        // НОВЫЙ МЕТОД: обработка выбора метода стеганографии
         private void OnMethodTypeChanged(string methodType)
         {
+            _currentMethod = methodType;
             _model.SetMethod(methodType);
             _view.UpdateStatus($"Выбран метод: {methodType}");
         }
@@ -40,15 +36,19 @@ namespace MetaHide.controller
         {
             if (string.IsNullOrEmpty(imagePath))
             {
-                MessageBox.Show("Сначала выберите изображение!", "Внимание", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Сначала выберите изображение!", "Внимание");
                 return;
             }
 
             if (string.IsNullOrEmpty(text))
             {
-                MessageBox.Show("Введите текст для скрытия!", "Внимание", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Введите текст для скрытия!", "Внимание");
                 return;
             }
+
+            _model.SetMethod(_currentMethod);
+            bool isHidden = (_currentMethod == "marker");
+            _model.SetHiddenMode(isHidden);
 
             var result = _model.HideData(imagePath, text);
 
@@ -68,18 +68,20 @@ namespace MetaHide.controller
         {
             if (string.IsNullOrEmpty(imagePath))
             {
-                MessageBox.Show("Сначала выберите изображение!", "Внимание", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Сначала выберите изображение!", "Внимание");
                 return;
             }
+
+            // Устанавливаем метод перед извлечением
+            _model.SetMethod(_currentMethod);
+            bool isHidden = (_currentMethod == "marker");
+            _model.SetHiddenMode(isHidden);
 
             string? password = null;
             if (_model.GetEncryptionType() != EncryptionModel.EncryptionType.None)
             {
                 password = _view.ShowPasswordDialog();
-                if (password == null)
-                {
-                    return;
-                }
+                if (password == null) return;
             }
 
             _model.SetEncryptionSettings(_model.GetEncryptionType(), password ?? "");
@@ -102,15 +104,14 @@ namespace MetaHide.controller
         private void OnModeChangedRequested(bool isHidden)
         {
             _model.SetHiddenMode(isHidden);
-            string modeName = isHidden ? "Скрытый (данные в конец файла)" : "Обычный (ImageDescription/XMP)";
+            string modeName = isHidden ? "Скрытый (данные в конец файла)" : "Обычный";
             _view.UpdateStatus($"Режим: {modeName}");
         }
 
         private void OnEncryptionSettingsChanged(EncryptionModel.EncryptionType type, string password)
         {
             _model.SetEncryptionSettings(type, password);
-            string typeName = type.ToString();
-            _view.UpdateStatus($"Шифрование: {typeName}");
+            _view.UpdateStatus($"Шифрование: {type}");
         }
 
         private void OnCompressionSettingsChanged(bool useCompression, int thresholdKB)
