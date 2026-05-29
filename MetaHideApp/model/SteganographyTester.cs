@@ -540,7 +540,7 @@ namespace MetaHide.tests
 
         private void Log(string message)
         {
-            string logPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "metahide.log");
+            string logPath = Path.Combine(Application.StartupPath, "metahide.log");
             string logEntry = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} | {message}";
             File.AppendAllText(logPath, logEntry + Environment.NewLine);
             Console.WriteLine(message);

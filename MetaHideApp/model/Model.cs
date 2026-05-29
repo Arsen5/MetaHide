@@ -313,7 +313,7 @@ public class Model : ISteganography
             }
 
             string logEntry = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} | {operation} | {Path.GetFileName(file)} | {method} | {result}{sizeInfo}";
-            string logPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "metahide.log");
+            string logPath = Path.Combine(Application.StartupPath, "metahide.log");
             File.AppendAllText(logPath, logEntry + Environment.NewLine);
         }
         catch

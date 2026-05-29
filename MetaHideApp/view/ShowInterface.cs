@@ -1,8 +1,9 @@
-﻿using System;
+﻿using MetaHide.model;
+using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
-using MetaHide.model;
 
 namespace MetaHide.view;
 
@@ -23,39 +24,6 @@ public partial class View
 
     private void CreateInterface()
     {
-        // Кнопка тестов
-        var testButton = new Button
-        {
-            Text = "Запустить тесты",
-            BackColor = ColorTranslator.FromHtml("#2196F3"),
-            ForeColor = Color.White,
-            Font = new Font("Inter", 11),
-            Size = new Size(160, 40),
-            Location = new Point(870, 510),
-            Cursor = Cursors.Hand
-        };
-
-        testButton.Click += (s, e) =>
-        {
-            System.Threading.Tasks.Task.Run(() =>
-            {
-                try
-                {
-                    var tester = new MetaHide.tests.SteganographyTester();
-                    tester.RunTests();
-                    MessageBox.Show("Тесты завершены! Проверьте консоль для результатов.",
-                                  "Тестирование", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Ошибка при тестировании: {ex.Message}",
-                                  "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            });
-        };
-
-        form.Controls.Add(testButton);
-
         var header = new Panel
         {
             Dock = DockStyle.Top,
@@ -85,80 +53,40 @@ public partial class View
             TextAlign = ContentAlignment.MiddleRight
         };
 
-        var instruction = new Panel
+        // ========== ВЫБОР МЕТОДА ==========
+        var methodPanel = new FlowLayoutPanel
         {
-            Size = new Size(320, 400),
+            Size = new Size(320, 280),
             Location = new Point(30, 60),
             BackColor = Color.White,
             BorderStyle = BorderStyle.FixedSingle,
-            Padding = new Padding(20, 10, 20, 20)
-        };
-
-        var label = new Label
-        {
-            Text = "Инструкция",
-            Font = new Font("Inter", 13, FontStyle.Bold),
-            ForeColor = ColorTranslator.FromHtml("#333333"),
-            AutoSize = true,
-            Dock = DockStyle.Top,
-        };
-
-        var instr = new Label
-        {
-            Location = new Point(20, 40),
-            Text = "MetaHide позволяет безопасно скрывать\r\nтекстовые сообщения внутри графических\r\nфайлов (стеганография) и извлекать их\r\nобратно. Все операции происходят локально.",
-            Font = new Font("Inter", 9),
-            ForeColor = ColorTranslator.FromHtml("#555555"),
-            AutoSize = true,
-        };
-
-        var label2 = new Label
-        {
-            Location = new Point(20, 120),
-            Text = "Как зашифровать или\r\nрасшифровать данные?",
-            Font = new Font("Inter", 9, FontStyle.Bold),
-            ForeColor = ColorTranslator.FromHtml("#333333"),
-            AutoSize = true,
-        };
-
-        var instr2 = new Label
-        {
-            Location = new Point(20, 160),
-            Text = "• Нажмите «выбор файла» или перетащите\r\nизображение в центральную область.\r\n" +
-            "• Доступные методы зависят от формата файла.\r\n" +
-            "• После загрузки нажмите кнопку\r\n«зашифровать» или «расшифровать»\r\nв нижней панели.\r\n" +
-            "• Если вы выбрали «зашифровать»,\r\nто в появившемся поле введите текст,\r\nкоторый хотите скрыть.\r\n" +
-            "• Новая картинка появится\r\n на Рабочем столе",
-            Font = new Font("Inter", 9),
-            ForeColor = ColorTranslator.FromHtml("#555555"),
-            AutoSize = true,
-        };
-
-        // ========== ВЫБОР МЕТОДА ==========
-        var methodPanel = new Panel
-        {
-            Location = new Point(30, 420),
-            Size = new Size(320, 45),
-            BackColor = Color.White,
-            BorderStyle = BorderStyle.FixedSingle,
-            Padding = new Padding(10)
+            Padding = new Padding(20),
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false
         };
 
         var methodLabel = new Label
         {
             Text = "Метод скрытия:",
-            Font = new Font("Inter", 10, FontStyle.Bold),
-            ForeColor = Color.Gray,
-            Location = new Point(5, 12),
+            Font = new Font("Inter", 14, FontStyle.Bold),
+            ForeColor = ColorTranslator.FromHtml("#333333"),
             AutoSize = true
+        };
+
+        var mlabel2 = new Label
+        {
+            Text = "Сначала выберите изображение",
+            Font = new Font("Inter", 11),
+            ForeColor = ColorTranslator.FromHtml("#666666"),
+            AutoSize = true,
         };
 
         methodComboBox = new ComboBox
         {
-            Location = new Point(120, 10),
-            Size = new Size(180, 25),
             DropDownStyle = ComboBoxStyle.DropDownList,
-            Enabled = false
+            Enabled = false,
+            Size = new Size(260, 25),
+            Font = new Font("Inter", 10)
         };
         methodComboBox.Items.Add("Сначала выберите файл");
 
@@ -187,8 +115,189 @@ public partial class View
             UpdateStatus($"Метод: {methodComboBox.Text}");
         };
 
-        methodPanel.Controls.Add(methodLabel);
-        methodPanel.Controls.Add(methodComboBox);
+        var encryptionLabel = new Label
+        {
+            Text = "Шифрование:",
+            Font = new Font("Inter", 14, FontStyle.Bold),
+            ForeColor = ColorTranslator.FromHtml("#333333"),
+            AutoSize = true,
+            Margin = new Padding(0, 0, 0, 10)
+        };
+
+        encryptionComboBox = new ComboBox
+        {
+            Size = new Size(220, 25),
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            Margin = new Padding(0, 0, 0, 10)
+        };
+        encryptionComboBox.Items.AddRange(new object[] { "Без шифрования", "XOR", "AES-128", "AES-256" });
+        encryptionComboBox.SelectedIndex = 0;
+
+        var passwordLabel = new Label
+        {
+            Text = "Пароль:",
+            Font = new Font("Inter", 14, FontStyle.Bold),
+            ForeColor = ColorTranslator.FromHtml("#333333"),
+            AutoSize = true,
+            Margin = new Padding(0, 0, 0, 10)
+        };
+
+        passwordTextBox = new TextBox
+        {
+            Size = new Size(150, 25),
+            PasswordChar = '*',
+            PlaceholderText = "Введите пароль",
+            Margin = new Padding(0, 0, 0, 10)
+        };
+
+        encryptionComboBox.SelectedIndexChanged += (s, e) =>
+        {
+            var type = encryptionComboBox.SelectedIndex switch
+            {
+                1 => EncryptionModel.EncryptionType.XOR,
+                2 => EncryptionModel.EncryptionType.AES128,
+                3 => EncryptionModel.EncryptionType.AES256,
+                _ => EncryptionModel.EncryptionType.None
+            };
+            EncryptionSettingsChanged?.Invoke(type, passwordTextBox.Text);
+        };
+
+        passwordTextBox.TextChanged += (s, e) =>
+        {
+            var type = encryptionComboBox.SelectedIndex switch
+            {
+                1 => EncryptionModel.EncryptionType.XOR,
+                2 => EncryptionModel.EncryptionType.AES128,
+                3 => EncryptionModel.EncryptionType.AES256,
+                _ => EncryptionModel.EncryptionType.None
+            };
+            EncryptionSettingsChanged?.Invoke(type, passwordTextBox.Text);
+        };
+        // ========== LOG PANEL ==========
+        var logPanel = new TableLayoutPanel
+        {
+            Size = new Size(320, 160),
+            Location = new Point(30, 350),
+            BackColor = ColorTranslator.FromHtml("#EEF2FF"),
+            BorderStyle = BorderStyle.FixedSingle,
+            Padding = new Padding(20, 10, 20, 10),
+            ColumnCount = 2,  // ← ДВЕ КОЛОНКИ
+            RowCount = 4
+        };
+
+        // Стили колонок
+        logPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));  // левая
+        logPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));  // правая
+
+        // Стили строк
+        logPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
+        logPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 35));
+        logPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 35));
+        logPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 35));
+
+        // compressionCheckBox (занимает обе колонки)
+        compressionCheckBox = new CheckBox
+        {
+            Text = "Включить сжатие",
+            Font = new Font("Inter", 13, FontStyle.Bold),
+            ForeColor = ColorTranslator.FromHtml("#333333"),
+            AutoSize = true
+        };
+        logPanel.Controls.Add(compressionCheckBox, 0, 0);
+        logPanel.SetColumnSpan(compressionCheckBox, 2);  // ← растянуть на 2 колонки
+
+        // instructButton (левая колонка)
+        var instructButton = new Button
+        {
+            Text = "📖 Инструкция",
+            BackColor = Color.White,
+            ForeColor = ColorTranslator.FromHtml("#334155"),
+            Font = new Font("Inter", 11),
+            Size = new Size(150, 30),
+            Cursor = Cursors.Hand
+        };
+        logPanel.Controls.Add(instructButton, 0, 1);
+
+        // logButton (левая колонка)
+        var logButton = new Button
+        {
+            Text = "📜 Журнал логов",
+            BackColor = Color.White,
+            ForeColor = ColorTranslator.FromHtml("#334155"),
+            Font = new Font("Inter", 11),
+            Size = new Size(150, 30),
+            Cursor = Cursors.Hand
+        };
+
+        logButton.Click += (s, e) =>
+        {
+            var path = Path.Combine(Application.StartupPath, "metahide.log");
+            if (File.Exists(path))
+                Process.Start("notepad.exe", path);
+            else
+                MessageBox.Show($"Файл не найден: {path}");
+        };
+
+        logPanel.Controls.Add(logButton, 0, 2);
+
+        // ========== НОВАЯ КНОПКА ОЧИСТКИ (правая колонка) ==========
+        var clearLogButton = new Button
+        {
+            Text = "Очистить",
+            BackColor = Color.White,
+            ForeColor = ColorTranslator.FromHtml("#DC2626"),
+            Font = new Font("Inter", 11),
+            Size = new Size(100, 30),
+            Cursor = Cursors.Hand
+        };
+
+        clearLogButton.Click += (s, e) =>
+        {
+            var path = Path.Combine(Application.StartupPath, "metahide.log");
+            try
+            {
+                if (File.Exists(path))
+                {
+                    File.WriteAllText(path, string.Empty);
+                    MessageBox.Show("Лог очищен", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка: {ex.Message}");
+            }
+        };
+
+        logPanel.Controls.Add(clearLogButton, 1, 2);  // ← колонка 1, строка 2
+
+        // testButton (левая колонка)
+        var testButton = new Button
+        {
+            Text = "Запустить тесты",
+            BackColor = ColorTranslator.FromHtml("#2196F3"),
+            ForeColor = Color.White,
+            Font = new Font("Inter", 11),
+            Size = new Size(150, 30),
+            Cursor = Cursors.Hand
+        };
+
+        testButton.Click += (s, e) =>
+        {
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                try
+                {
+                    var tester = new MetaHide.tests.SteganographyTester();
+                    tester.RunTests();
+                    MessageBox.Show("Тесты завершены! Проверьте консоль.");
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка: {ex.Message}");
+                }
+            });
+        };
+
 
         // ========== DROP PANEL ==========
         MainPanel = new Panel
@@ -313,10 +422,17 @@ public partial class View
         header.Controls.Add(title);
         header.Controls.Add(status);
 
-        instruction.Controls.Add(instr);
-        instruction.Controls.Add(instr2);
-        instruction.Controls.Add(label2);
-        instruction.Controls.Add(label);
+        methodPanel.Controls.Add(methodLabel);
+        methodPanel.Controls.Add(mlabel2);
+        methodPanel.Controls.Add(methodComboBox);
+        methodPanel.Controls.Add(encryptionLabel);
+        methodPanel.Controls.Add(encryptionComboBox);
+        methodPanel.Controls.Add(passwordLabel);
+        methodPanel.Controls.Add(passwordTextBox);
+
+        logPanel.Controls.Add(compressionCheckBox, 0, 0);
+        logPanel.Controls.Add(instructButton, 0, 1);
+        logPanel.Controls.Add(testButton, 0, 3);
 
         footer.Controls.Add(footerFile);
         footer.Controls.Add(btnHide);
@@ -324,110 +440,13 @@ public partial class View
         footerFile.Controls.Add(t1);
         footerFile.Controls.Add(lblStatus);
 
-        form.Controls.Add(methodPanel);
         form.Controls.Add(MainPanel);
         form.Controls.Add(footer);
-        form.Controls.Add(instruction);
+        form.Controls.Add(methodPanel);
+        form.Controls.Add(logPanel);
         form.Controls.Add(header);
-
-        // ========== ПАНЕЛЬ ШИФРОВАНИЯ ==========
-        var encryptionPanel = new Panel
-        {
-            Location = new Point(30, 510),
-            Size = new Size(500, 80),
-            BackColor = Color.White,
-            BorderStyle = BorderStyle.FixedSingle,
-            Padding = new Padding(10)
-        };
-
-        var encryptionLabel = new Label
-        {
-            Text = "Шифрование:",
-            Font = new Font("Inter", 11, FontStyle.Bold),
-            ForeColor = Color.Gray,
-            AutoSize = true,
-            Location = new Point(10, 10)
-        };
-
-        encryptionComboBox = new ComboBox
-        {
-            Location = new Point(120, 8),
-            Size = new Size(120, 25),
-            DropDownStyle = ComboBoxStyle.DropDownList
-        };
-        encryptionComboBox.Items.AddRange(new object[] { "Без шифрования", "XOR", "AES-128", "AES-256" });
-        encryptionComboBox.SelectedIndex = 0;
-
-        var passwordLabel = new Label
-        {
-            Text = "Пароль:",
-            Font = new Font("Inter", 11),
-            ForeColor = Color.Gray,
-            AutoSize = true,
-            Location = new Point(260, 10)
-        };
-
-        passwordTextBox = new TextBox
-        {
-            Location = new Point(320, 8),
-            Size = new Size(150, 25),
-            PasswordChar = '*',
-            PlaceholderText = "Введите пароль"
-        };
-
-        encryptionComboBox.SelectedIndexChanged += (s, e) =>
-        {
-            var type = encryptionComboBox.SelectedIndex switch
-            {
-                1 => EncryptionModel.EncryptionType.XOR,
-                2 => EncryptionModel.EncryptionType.AES128,
-                3 => EncryptionModel.EncryptionType.AES256,
-                _ => EncryptionModel.EncryptionType.None
-            };
-            EncryptionSettingsChanged?.Invoke(type, passwordTextBox.Text);
-        };
-
-        passwordTextBox.TextChanged += (s, e) =>
-        {
-            var type = encryptionComboBox.SelectedIndex switch
-            {
-                1 => EncryptionModel.EncryptionType.XOR,
-                2 => EncryptionModel.EncryptionType.AES128,
-                3 => EncryptionModel.EncryptionType.AES256,
-                _ => EncryptionModel.EncryptionType.None
-            };
-            EncryptionSettingsChanged?.Invoke(type, passwordTextBox.Text);
-        };
-
-        encryptionPanel.Controls.AddRange(new Control[] {
-            encryptionLabel, encryptionComboBox, passwordLabel, passwordTextBox
-        });
-
-        // ========== ПАНЕЛЬ СЖАТИЯ ==========
-        var compressionPanel = new Panel
-        {
-            Location = new Point(550, 510),
-            Size = new Size(300, 80),
-            BackColor = Color.White,
-            BorderStyle = BorderStyle.FixedSingle,
-            Padding = new Padding(10)
-        };
-
-        var compressionLabel = new Label
-        {
-            Text = "Сжатие:",
-            Font = new Font("Inter", 11, FontStyle.Bold),
-            ForeColor = Color.Gray,
-            AutoSize = true,
-            Location = new Point(10, 10)
-        };
-
-        compressionCheckBox = new CheckBox
-        {
-            Text = "Включить сжатие",
-            Location = new Point(80, 8),
-            AutoSize = true
-        };
+        
+        // ========== СЖАТИЕ ==========
 
         var thresholdLabel = new Label
         {
@@ -458,13 +477,6 @@ public partial class View
             int.TryParse(thresholdTextBox.Text, out threshold);
             CompressionSettingsChanged?.Invoke(compressionCheckBox.Checked, threshold);
         };
-
-        compressionPanel.Controls.AddRange(new Control[] {
-            compressionLabel, compressionCheckBox, thresholdLabel, thresholdTextBox
-        });
-
-        form.Controls.Add(encryptionPanel);
-        form.Controls.Add(compressionPanel);
     }
 
     // Метод обновления доступных методов в зависимости от типа файла
@@ -782,4 +794,4 @@ public partial class View
     {
         return passwordTextBox?.Text ?? "";
     }
-}
+} 
