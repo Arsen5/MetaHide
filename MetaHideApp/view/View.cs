@@ -1,7 +1,6 @@
 ﻿using MetaHide.model;
-using Microsoft.VisualBasic.Logging;
-using System.Drawing.Printing;
 using System.Windows.Forms;
+using Guna.UI2.WinForms;
 
 namespace MetaHide.view;
 
@@ -14,18 +13,14 @@ public partial class View
     public event Action<string, string>? HideRequested;
     public event Action<string>? ExtractRequested;
     public event Action<bool>? ModeChangedRequested;
-
-    // События для шифрования и сжатия
     public event Action<EncryptionModel.EncryptionType, string>? EncryptionSettingsChanged;
     public event Action<bool, int>? CompressionSettingsChanged;
-
-    // Событие для выбора метода стеганографии
     public event Action<string>? MethodTypeChanged;
 
-    private Button? btnSelectImage;
-    private Button? btnHide;
-    private Button? btnExtract;
-    private TextBox? txt;
+    private Guna2Button? btnSelectImage;
+    private Guna2Button? btnHide;
+    private Guna2Button? btnExtract;
+    private Guna2TextBox? txt;
     private Label? lblStatus;
 
     private string _selectedImagePath = "";
@@ -54,6 +49,7 @@ public partial class View
             lblStatus.Invoke((MethodInvoker)(() => lblStatus.Text = $"Файл: {fileName}"));
     }
 
+    // Метод ShowExtractedData УДАЛЁН из View.cs — он реализован в ShowInterface.cs
 
     public string GetSelectedImagePath() => _selectedImagePath;
 
@@ -74,49 +70,16 @@ public partial class View
             passwordForm.MaximizeBox = false;
             passwordForm.MinimizeBox = false;
 
-            var label = new Label
-            {
-                Text = "Пароль для дешифрования:",
-                Location = new Point(20, 20),
-                AutoSize = true
-            };
-
-            var textBox = new TextBox
-            {
-                Location = new Point(20, 45),
-                Size = new Size(240, 25),
-                PasswordChar = '*',
-                PlaceholderText = "Введите пароль"
-            };
-
-            var okButton = new Button
-            {
-                Text = "OK",
-                Location = new Point(100, 80),
-                Size = new Size(75, 25),
-                DialogResult = DialogResult.OK
-            };
-
-            var cancelButton = new Button
-            {
-                Text = "Отмена",
-                Location = new Point(185, 80),
-                Size = new Size(75, 25),
-                DialogResult = DialogResult.Cancel
-            };
+            var label = new Label { Text = "Пароль для дешифрования:", Location = new Point(20, 20), AutoSize = true };
+            var textBox = new TextBox { Location = new Point(20, 45), Size = new Size(240, 25), PasswordChar = '*', PlaceholderText = "Введите пароль" };
+            var okButton = new Button { Text = "OK", Location = new Point(100, 80), Size = new Size(75, 25), DialogResult = DialogResult.OK };
+            var cancelButton = new Button { Text = "Отмена", Location = new Point(185, 80), Size = new Size(75, 25), DialogResult = DialogResult.Cancel };
 
             passwordForm.Controls.AddRange(new Control[] { label, textBox, okButton, cancelButton });
             passwordForm.AcceptButton = okButton;
             passwordForm.CancelButton = cancelButton;
 
-            if (passwordForm.ShowDialog() == DialogResult.OK)
-            {
-                return textBox.Text;
-            }
-            else
-            {
-                return null;
-            }
+            return passwordForm.ShowDialog() == DialogResult.OK ? textBox.Text : null;
         }
     }
 }
