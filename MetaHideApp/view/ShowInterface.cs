@@ -13,6 +13,7 @@ public partial class View
     public Guna2Panel MainPanel;
     public bool ChosenStatus;
     private Label cancel;
+    private InstructionForm _instructionWindow = null;
 
     // Элементы для шифрования и сжатия
     private Guna2ComboBox encryptionComboBox;
@@ -31,18 +32,39 @@ public partial class View
             Dock = DockStyle.Top,
             Height = 50,
             FillColor = Color.White,
-            BorderRadius = 15,
-            ShadowDecoration = { Enabled = true, Shadow = new Padding(0, 0, 0, 2) },
-            Padding = new Padding(20, 10, 20, 10)
+            BorderColor = Color.LightGray,
+            BorderThickness = 1,
+            // Задаем внутренние отступы: 30 слева/справа, 0 сверху/снизу
+            Padding = new Padding(30, 0, 30, 0)
+        };
+
+        var img = new PictureBox
+        {
+            Image = Image.FromFile("imgs/ico.png"),
+            BackColor = Color.Transparent,
+            // Меняем на Normal, чтобы контролировать размер вручную
+            SizeMode = PictureBoxSizeMode.Normal,
+            Dock = DockStyle.Left,
+            // Растягиваем PictureBox на всю высоту панели (50px)
+            Height = 50,
+            // Задаем ширину, равную ширине иконки (например, 16px или 24px)
+            Width = 16,
+            // Центрируем саму картинку внутри PictureBox:
+            // 17px сверху и снизу ( (50 высоты - 16 иконки) / 2 = 17 )
+            Padding = new Padding(0, 17, 0, 17)
         };
 
         var title = new Label
         {
-            Text = "🔒 MetaHide",
+            Text = "  MetaHide", // Пробелы слева сделают отступ от иконки
             ForeColor = ColorTranslator.FromHtml("#444444"),
             Font = new Font("Segoe UI", 14, FontStyle.Bold),
-            AutoSize = true,
-            Location = new Point(20, 12)
+            BackColor = Color.Transparent,
+            Dock = DockStyle.Left,
+            // Выключаем AutoSize, чтобы лейбл занял всю доступную высоту и сработало выравнивание
+            AutoSize = false,
+            Width = 150, // Задайте ширину с запасом под текст
+            TextAlign = ContentAlignment.MiddleLeft // Выравнивание по левому краю, но по центру высоты
         };
 
         var version = new Label
@@ -50,54 +72,78 @@ public partial class View
             Text = "Версия 1.0",
             ForeColor = ColorTranslator.FromHtml("#333333"),
             Font = new Font("Segoe UI", 10),
-            AutoSize = true,
-            Location = new Point(header.Width - 80, 15),
-            Anchor = AnchorStyles.Top | AnchorStyles.Right
+            BackColor = Color.Transparent,
+            Dock = DockStyle.Right,
+            // Выключаем AutoSize для вертикального центрирования
+            AutoSize = false,
+            Width = 100, // Задайте ширину с запасом под текст версии
+            TextAlign = ContentAlignment.MiddleRight // Выравнивание по правому краю, по центру высоты
         };
-        header.Controls.Add(title);
-        header.Controls.Add(version);
+
+        // Важен правильный порядок добавления контролов на панель
+        header.Controls.Add(title);   // Вторым слева
+        header.Controls.Add(img);     // Самым первым слева
+        header.Controls.Add(version); // Справа
 
         // ========== ЛЕВАЯ ПАНЕЛЬ (МЕТОДЫ) ==========
         var methodPanel = new Guna2Panel
         {
-            Size = new Size(340, 320),
-            Location = new Point(20, 70),
+            Size = new Size(340, 115),
+            Location = new Point(20, 60),
             FillColor = Color.White,
             BorderRadius = 20,
-            ShadowDecoration = { Enabled = true, Depth = 10, Shadow = new Padding(0, 0, 10, 10) },
-            Padding = new Padding(20)
+            BorderColor = Color.LightGray,
+            BorderThickness = 1,
+            Padding = new Padding(20, 12, 20, 12)
         };
+
+        var table = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 3,
+            BackColor = Color.White
+        };
+
+        // Настройка строк
+        table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        // Фиксированная ширина колонки
+        table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 280));
 
         var methodLabel = new Label
         {
             Text = "Метод скрытия",
             Font = new Font("Segoe UI", 14, FontStyle.Bold),
             ForeColor = ColorTranslator.FromHtml("#333333"),
+            BackColor = Color.White,
             AutoSize = true,
-            Location = new Point(20, 10)
+            Margin = new Padding(0, 0, 0, 2)
         };
-        methodPanel.Controls.Add(methodLabel);
-
+        table.Controls.Add(methodLabel, 0, 0);
         var mlabel2 = new Label
         {
             Text = "Сначала выберите изображение",
             Font = new Font("Segoe UI", 10),
             ForeColor = ColorTranslator.FromHtml("#666666"),
+            BackColor = Color.White,
             AutoSize = true,
-            Location = new Point(20, 45)
+            Margin = new Padding(0, 0, 0, 2)
         };
-        methodPanel.Controls.Add(mlabel2);
+        table.Controls.Add(mlabel2, 0, 1);
 
         methodComboBox = new Guna2ComboBox
         {
-            Location = new Point(20, 75),
             Size = new Size(280, 30),
             BorderRadius = 10,
             FillColor = Color.WhiteSmoke,
             BorderColor = Color.LightGray,
             Font = new Font("Segoe UI", 10),
             DropDownStyle = ComboBoxStyle.DropDownList,
-            Enabled = false
+            Enabled = false,
+            Anchor = AnchorStyles.Left
         };
         methodComboBox.Items.Add("Сначала выберите файл");
         methodComboBox.SelectedIndexChanged += (s, e) =>
@@ -112,26 +158,71 @@ public partial class View
             ModeChangedRequested?.Invoke(methodType == "marker");
             UpdateStatus($"Метод: {methodComboBox.Text}");
         };
-        methodPanel.Controls.Add(methodComboBox);
+        table.Controls.Add(methodComboBox, 0, 2);
 
-        var encryptionLabel = new Label
+        methodPanel.Controls.Add(table);
+
+        // ========== ПАНЕЛЬ ШИФРОВАНИЯ ==========
+        var methodPanel2 = new Guna2Panel
         {
-            Text = "Шифрование",
+            Size = new Size(340, 165),
+            Location = new Point(20, 185),
+            FillColor = Color.White,
+            BorderRadius = 20,
+            BorderColor = Color.LightGray,
+            BorderThickness = 1,
+            Padding = new Padding(20, 12, 20, 12)
+        };
+
+        var table2 = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 4,
+            BackColor = Color.White
+        };
+
+        // Настройка строк
+        table2.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        table2.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        table2.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        table2.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        table2.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        // Фиксированная ширина колонки
+        table2.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 280));
+
+        var crypto = new Label
+        {
+            Text = "Криптозащита",
             Font = new Font("Segoe UI", 14, FontStyle.Bold),
             ForeColor = ColorTranslator.FromHtml("#333333"),
+            BackColor = Color.White,
             AutoSize = true,
-            Location = new Point(20, 130)
+            Margin = new Padding(0, 0, 0, 2)
         };
-        methodPanel.Controls.Add(encryptionLabel);
+        table2.Controls.Add(crypto, 0, 0);
+
+        var encrypt = new Label
+        {
+            Text = "Шифрование",
+            Font = new Font("Segoe UI", 10),
+            ForeColor = ColorTranslator.FromHtml("#666666"),
+            BackColor = Color.White,
+            AutoSize = true,
+            Margin = new Padding(0, 0, 0, 2)
+        };
+        table2.Controls.Add(encrypt, 0, 1);
 
         encryptionComboBox = new Guna2ComboBox
         {
-            Location = new Point(20, 160),
             Size = new Size(280, 30),
             BorderRadius = 10,
             FillColor = Color.WhiteSmoke,
             Font = new Font("Segoe UI", 10),
-            DropDownStyle = ComboBoxStyle.DropDownList
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            Margin = new Padding(0, 0, 0, 2),
+            Anchor = AnchorStyles.Left
         };
         encryptionComboBox.Items.AddRange(new object[] { "Без шифрования", "XOR", "AES-128", "AES-256" });
         encryptionComboBox.SelectedIndex = 0;
@@ -146,27 +237,28 @@ public partial class View
             };
             EncryptionSettingsChanged?.Invoke(type, passwordTextBox.Text);
         };
-        methodPanel.Controls.Add(encryptionComboBox);
+        table2.Controls.Add(encryptionComboBox, 0, 2);
 
         var passwordLabel = new Label
         {
-            Text = "Пароль",
-            Font = new Font("Segoe UI", 12, FontStyle.Bold),
-            ForeColor = ColorTranslator.FromHtml("#333333"),
+            Text = "Криптографический пароль",
+            Font = new Font("Segoe UI", 10),
+            ForeColor = ColorTranslator.FromHtml("#666666"),
             AutoSize = true,
-            Location = new Point(20, 200)
+            Margin = new Padding(0, 0, 0, 2),
+            BackColor = Color.White
         };
-        methodPanel.Controls.Add(passwordLabel);
+        table2.Controls.Add(passwordLabel, 0, 3);
 
         passwordTextBox = new Guna2TextBox
         {
-            Location = new Point(20, 225),
-            Size = new Size(280, 30),
-            BorderRadius = 10,
+            Size = new Size(275, 25),
+            BorderRadius = 7,
             FillColor = Color.WhiteSmoke,
             PasswordChar = '*',
             PlaceholderText = "Введите пароль",
-            Font = new Font("Segoe UI", 10)
+            Font = new Font("Segoe UI", 10),
+            Anchor = AnchorStyles.Left
         };
         passwordTextBox.TextChanged += (s, e) =>
         {
@@ -179,84 +271,140 @@ public partial class View
             };
             EncryptionSettingsChanged?.Invoke(type, passwordTextBox.Text);
         };
-        methodPanel.Controls.Add(passwordTextBox);
+        table2.Controls.Add(passwordTextBox, 0, 4);
+
+        methodPanel2.Controls.Add(table2);
 
         // ========== ПАНЕЛЬ ЛОГОВ ==========
         var logPanel = new Guna2Panel
         {
-            Size = new Size(340, 200),
-            Location = new Point(20, 400),
+            Size = new Size(340, 165),
+            Location = new Point(20, 360),
             FillColor = ColorTranslator.FromHtml("#EEF2FF"),
             BorderRadius = 20,
-            ShadowDecoration = { Enabled = true, Depth = 8, Shadow = new Padding(0, 0, 8, 8) },
-            Padding = new Padding(15)
+            BorderColor = Color.LightGray,
+            BorderThickness = 1,
+            Padding = new Padding(20, 15, 20, 15)
         };
+
+        var table3 = new TableLayoutPanel
+        {
+            Size = new Size(300, 140),
+            Location = new Point(20, 15),
+            ColumnCount = 2,
+            RowCount = 4,
+            BackColor = ColorTranslator.FromHtml("#EEF2FF"),
+            Margin = new Padding(0)
+        };
+
+        // Настройка колонок
+        table3.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+        table3.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+
+        // Настройка строк
+        table3.RowStyles.Add(new RowStyle(SizeType.Absolute, 35));
+        table3.RowStyles.Add(new RowStyle(SizeType.Absolute, 35));
+        table3.RowStyles.Add(new RowStyle(SizeType.Absolute, 35));
+        table3.RowStyles.Add(new RowStyle(SizeType.Absolute, 35));
+
+        // ========== СТРОКА 0: Включить сжатие (слева) + Порог (справа) ==========
 
         compressionCheckBox = new Guna2CheckBox
         {
             Text = "Включить сжатие",
-            Font = new Font("Segoe UI", 11, FontStyle.Bold),
+            Font = new Font("Segoe UI", 9, FontStyle.Bold),
             ForeColor = ColorTranslator.FromHtml("#333333"),
-            Location = new Point(15, 15),
-            AutoSize = true
+            AutoSize = true,
+            Anchor = AnchorStyles.Left,
+            Margin = new Padding(5, 0, 0, 0)
         };
         compressionCheckBox.CheckedChanged += (s, e) =>
         {
             int threshold = int.TryParse(thresholdTextBox.Text, out int t) ? t : 1;
             CompressionSettingsChanged?.Invoke(compressionCheckBox.Checked, threshold);
         };
-        logPanel.Controls.Add(compressionCheckBox);
+        table3.Controls.Add(compressionCheckBox, 0, 0);
+
+        var thresholdPanel = new FlowLayoutPanel
+        {
+            FlowDirection = FlowDirection.LeftToRight,
+            Anchor = AnchorStyles.Right,
+            AutoSize = true,
+            BackColor = ColorTranslator.FromHtml("#EEF2FF")
+        };
 
         var thresholdLabel = new Label
         {
             Text = "Порог (КБ):",
             Font = new Font("Segoe UI", 10),
             ForeColor = ColorTranslator.FromHtml("#555555"),
-            Location = new Point(15, 50),
-            AutoSize = true
+            AutoSize = true,
+            Margin = new Padding(0, 5, 5, 0)
         };
-        logPanel.Controls.Add(thresholdLabel);
 
         thresholdTextBox = new Guna2TextBox
         {
-            Location = new Point(100, 47),
             Size = new Size(60, 25),
             BorderRadius = 8,
             FillColor = Color.White,
             Text = "1",
-            Font = new Font("Segoe UI", 9)
+            Font = new Font("Segoe UI", 9),
+            Margin = new Padding(0, 2, 0, 0)
         };
         thresholdTextBox.TextChanged += (s, e) =>
         {
             int threshold = int.TryParse(thresholdTextBox.Text, out int t) ? t : 1;
             CompressionSettingsChanged?.Invoke(compressionCheckBox.Checked, threshold);
         };
-        logPanel.Controls.Add(thresholdTextBox);
 
+        thresholdPanel.Controls.Add(thresholdLabel);
+        thresholdPanel.Controls.Add(thresholdTextBox);
+        table3.Controls.Add(thresholdPanel, 1, 0);
+
+        // ========== СТРОКА 1: Инструкция ==========
         var instructButton = new Guna2Button
         {
-            Text = "📖 Инструкция",
+            Text = "Инструкция",
             FillColor = Color.White,
             ForeColor = ColorTranslator.FromHtml("#334155"),
-            BorderRadius = 15,
+            BorderRadius = 10,
+            BorderThickness = 1,
+            BorderColor = Color.LightGray,
             Size = new Size(140, 35),
-            Location = new Point(15, 90),
             Font = new Font("Segoe UI", 10),
-            Cursor = Cursors.Hand
+            Cursor = Cursors.Hand,
+            Anchor = AnchorStyles.Left
+        };
+        instructButton.Click += (s, e) =>
+        {
+            if (_instructionWindow == null || _instructionWindow.IsDisposed)
+            {
+                _instructionWindow = new InstructionForm();
+                _instructionWindow.Show(); // Открывает как отдельное независимое окно
+            }
+            else
+            {
+                // Если окно уже открыто, просто выводим его на передний план
+                _instructionWindow.BringToFront();
+            }
         };
         instructButton.HoverState.FillColor = ColorTranslator.FromHtml("#E2E8F0");
-        logPanel.Controls.Add(instructButton);
+        table3.Controls.Add(instructButton, 0, 1);
+
+        // ========== СТРОКА 2: Журнал логов (слева) + Очистить лог (справа) ==========
 
         var logButton = new Guna2Button
         {
-            Text = "📜 Журнал логов",
+            Text = "Журнал логов",
             FillColor = Color.White,
             ForeColor = ColorTranslator.FromHtml("#334155"),
-            BorderRadius = 15,
+            BorderRadius = 10,
+            BorderThickness = 1,
+            BorderColor = Color.LightGray,
             Size = new Size(140, 35),
-            Location = new Point(170, 90),
             Font = new Font("Segoe UI", 10),
-            Cursor = Cursors.Hand
+            Cursor = Cursors.Hand,
+            Anchor = AnchorStyles.Left
         };
         logButton.Click += (s, e) =>
         {
@@ -265,18 +413,20 @@ public partial class View
             else MessageBox.Show($"Файл не найден: {path}");
         };
         logButton.HoverState.FillColor = ColorTranslator.FromHtml("#E2E8F0");
-        logPanel.Controls.Add(logButton);
+        table3.Controls.Add(logButton, 0, 2);
 
         var clearLogButton = new Guna2Button
         {
             Text = "Очистить лог",
             FillColor = Color.White,
             ForeColor = ColorTranslator.FromHtml("#DC2626"),
-            BorderRadius = 15,
+            BorderRadius = 10,
+            BorderThickness = 1,
+            BorderColor = Color.LightGray,
             Size = new Size(140, 35),
-            Location = new Point(15, 135),
             Font = new Font("Segoe UI", 10),
-            Cursor = Cursors.Hand
+            Cursor = Cursors.Hand,
+            Anchor = AnchorStyles.Right
         };
         clearLogButton.Click += (s, e) =>
         {
@@ -285,18 +435,21 @@ public partial class View
             catch (Exception ex) { MessageBox.Show($"Ошибка: {ex.Message}"); }
         };
         clearLogButton.HoverState.FillColor = ColorTranslator.FromHtml("#FEE2E2");
-        logPanel.Controls.Add(clearLogButton);
+        table3.Controls.Add(clearLogButton, 1, 2);
 
+        // ========== СТРОКА 3: Запустить тесты ==========
         var testButton = new Guna2Button
         {
-            Text = "🧪 Запустить тесты",
+            Text = "Запустить тесты",
             FillColor = ColorTranslator.FromHtml("#3B82F6"),
             ForeColor = Color.White,
-            BorderRadius = 15,
-            Size = new Size(140, 35),
-            Location = new Point(170, 135),
+            BorderRadius = 10,
+            Size = new Size(140, 30),
             Font = new Font("Segoe UI", 10),
-            Cursor = Cursors.Hand
+            Cursor = Cursors.Hand,
+            BorderThickness = 1,
+            BorderColor = Color.LightGray,
+            Anchor = AnchorStyles.Left
         };
         testButton.Click += (s, e) =>
         {
@@ -307,59 +460,30 @@ public partial class View
             });
         };
         testButton.HoverState.FillColor = ColorTranslator.FromHtml("#2563EB");
-        logPanel.Controls.Add(testButton);
+        table3.Controls.Add(testButton, 0, 3);
+
+        logPanel.Controls.Add(table3);
 
         // ========== ЦЕНТРАЛЬНАЯ PANEL (DROP) ==========
         MainPanel = new Guna2Panel
         {
             AllowDrop = true,
-            Location = new Point(380, 70),
-            Size = new Size(780, 490),
+            Location = new Point(380, 60),
+            Size = new Size(780, 465),
             FillColor = Color.White,
-            BorderRadius = 25,
-            ShadowDecoration = { Enabled = true, Depth = 12, Shadow = new Padding(0, 0, 12, 12) }
+            BorderRadius = 20,
+            BorderColor = Color.LightGray,
+            BorderThickness = 1,
         };
         MainWindow();
-
-        var dropImage = new PictureBox
-        {
-            SizeMode = PictureBoxSizeMode.AutoSize,
-            Location = new Point(290, 100),
-            Image = Image.FromFile("imgs/SVG.png")
-        };
-        var dropText = new Label
-        {
-            Location = new Point(200, 200),
-            Text = "Перетащите файл сюда",
-            Font = new Font("Segoe UI", 18),
-            ForeColor = Color.Gray,
-            AutoSize = true
-        };
-        btnSelectImage = new Guna2Button
-        {
-            Text = "Выберите файл",
-            FillColor = ColorTranslator.FromHtml("#FF7F50"),
-            ForeColor = Color.White,
-            BorderRadius = 25,
-            Font = new Font("Segoe UI", 11),
-            Size = new Size(180, 50),
-            Location = new Point(290, 250),
-            Cursor = Cursors.Hand
-        };
-        btnSelectImage.Click += (s, e) => SelectFile();
-        MainPanel.Controls.Add(dropImage);
-        MainPanel.Controls.Add(dropText);
-        MainPanel.Controls.Add(btnSelectImage);
-
         // ========== ФУТЕР ==========
         var footer = new Guna2Panel
         {
             Dock = DockStyle.Bottom,
-            Height = 110,
+            Height = 120,
             FillColor = Color.White,
             BorderRadius = 15,
-            ShadowDecoration = { Enabled = true, Shadow = new Padding(0, -2, 0, 0) },
-            Padding = new Padding(20, 10, 20, 10)
+            Padding = new Padding(20)
         };
 
         var footerFile = new Guna2Panel
@@ -368,6 +492,9 @@ public partial class View
             Height = 40,
             FillColor = ColorTranslator.FromHtml("#F8FAFC"),
             BorderRadius = 10,
+            BorderThickness = 1,
+            BorderColor = Color.LightGray,
+            BackColor = Color.Transparent,
             Padding = new Padding(10, 5, 10, 5)
         };
         lblStatus = new Label
@@ -394,10 +521,13 @@ public partial class View
             Text = "Зашифровать",
             FillColor = ColorTranslator.FromHtml("#FF7F50"),
             ForeColor = Color.White,
-            BorderRadius = 30,
+            BorderRadius = 15,
             Font = new Font("Segoe UI", 13, FontStyle.Bold),
-            Size = new Size(480, 45),
-            Location = new Point(30, 45),
+            Size = new Size(570, 45),
+            Location = new Point(20, 65),
+            BackColor = Color.Transparent,
+            BorderThickness = 1,
+            BorderColor = Color.LightGray,
             Cursor = Cursors.Hand
         };
         btnHide.Click += (s, e) =>
@@ -411,10 +541,13 @@ public partial class View
             Text = "Расшифровать",
             FillColor = Color.WhiteSmoke,
             ForeColor = Color.Black,
-            BorderRadius = 30,
+            BorderRadius = 15,
             Font = new Font("Segoe UI", 13, FontStyle.Bold),
-            Size = new Size(520, 45),
-            Location = new Point(530, 45),
+            Size = new Size(570, 45),
+            BorderThickness = 1,
+            BorderColor = Color.LightGray,
+            BackColor = Color.Transparent,
+            Location = new Point(595, 65),
             Cursor = Cursors.Hand
         };
         btnExtract.Click += (s, e) =>
@@ -432,22 +565,9 @@ public partial class View
         form.Controls.Add(MainPanel);
         form.Controls.Add(footer);
         form.Controls.Add(methodPanel);
+        form.Controls.Add(methodPanel2);
         form.Controls.Add(logPanel);
         form.Controls.Add(header);
-
-        // Скругление самой формы
-        form.Paint += (sender, e) =>
-        {
-            using (var path = new System.Drawing.Drawing2D.GraphicsPath())
-            {
-                int radius = 20;
-                path.AddArc(0, 0, radius, radius, 180, 90);
-                path.AddArc(form.Width - radius, 0, radius, radius, 270, 90);
-                path.AddArc(form.Width - radius, form.Height - radius, radius, radius, 0, 90);
-                path.AddArc(0, form.Height - radius, radius, radius, 90, 90);
-                form.Region = new Region(path);
-            }
-        };
     }
 
     // Обновление доступных методов в зависимости от типа файла
@@ -487,7 +607,10 @@ public partial class View
 
     private void MainWindow()
     {
+        // Очищаем старые элементы управления, чтобы избежать дублирования
         MainPanel.Controls.Clear();
+
+        // Настройка событий Drag & Drop
         MainPanel.DragEnter += (s, e) => { if (e.Data.GetDataPresent(DataFormats.FileDrop)) e.Effect = DragDropEffects.Copy; };
         MainPanel.DragDrop += (s, e) =>
         {
@@ -506,8 +629,34 @@ public partial class View
                 else UpdateStatus("Пожалуйста, выберите JPG, PNG, BMP или GIF файл");
             }
         };
-        var image = new PictureBox { SizeMode = PictureBoxSizeMode.AutoSize, Location = new Point(290, 100), Image = Image.FromFile("imgs/SVG.png") };
-        var text = new Label { Location = new Point(200, 200), Text = "Перетащите файл сюда", Font = new Font("Segoe UI", 18), ForeColor = Color.Gray, AutoSize = true };
+
+        // 1. ИКОНКА (Явно задаем размер 64x64 для точного расчета координат)
+        var image = new PictureBox
+        {
+            Size = new Size(64, 64),
+            SizeMode = PictureBoxSizeMode.Zoom,
+            Image = Image.FromFile("imgs/SVG.png"),
+            BackColor = Color.Transparent
+        };
+        // Позиционирование иконки по центру горизонтали
+        image.Location = new Point((MainPanel.Width - image.Width) / 2, 90);
+
+        // 2. ТЕКСТ (Выравнивание через фиксированную ширину контейнера)
+        var text = new Label
+        {
+            Text = "Перетащите файл сюда",
+            Font = new Font("Segoe UI", 18),
+            ForeColor = Color.Gray,
+            BackColor = Color.Transparent,
+            AutoSize = false,                       // Отключаем, чтобы контролировать ширину
+            Width = MainPanel.Width,                // Растягиваем во всю ширину панели
+            Height = 40,
+            TextAlign = ContentAlignment.MiddleCenter // Центрируем сам текст внутри блока
+        };
+        // Размещаем строго под иконкой с отступом в 15 пикселей
+        text.Location = new Point(0, image.Bottom + 15);
+
+        // 3. КНОПКА ВЫБОРА ФАЙЛА
         btnSelectImage = new Guna2Button
         {
             Text = "Выберите файл",
@@ -516,14 +665,33 @@ public partial class View
             BorderRadius = 25,
             Font = new Font("Segoe UI", 11),
             Size = new Size(180, 50),
-            Location = new Point(290, 250),
-            Cursor = Cursors.Hand
+            Cursor = Cursors.Hand,
+            BackColor = Color.Transparent,
+            UseTransparentBackground = true // Корректное отображение Guna-компонента
         };
         btnSelectImage.Click += (s, e) => SelectFile();
+        // Позиционируем кнопку по центру под текстом с отступом в 20 пикселей
+        btnSelectImage.Location = new Point((MainPanel.Width - btnSelectImage.Width) / 2, text.Bottom + 20);
+        var text2 = new Label
+        {
+            Text = "Поддерживаемые форматы: png/jpg/bmp/gif",
+            Font = new Font("Segoe UI", 13),
+            ForeColor = Color.Gray,
+            BackColor = Color.Transparent,
+            AutoSize = false,                       // Отключаем, чтобы контролировать ширину
+            Width = MainPanel.Width,                // Растягиваем во всю ширину панели
+            Height = 40,
+            TextAlign = ContentAlignment.MiddleCenter // Центрируем сам текст внутри блока
+        };
+        // Размещаем строго под иконкой с отступом в 15 пикселей
+        text2.Location = new Point(0, btnSelectImage.Bottom + 15);
+        // Добавляем все настроенные элементы на панель
         MainPanel.Controls.Add(image);
         MainPanel.Controls.Add(text);
         MainPanel.Controls.Add(btnSelectImage);
+        MainPanel.Controls.Add(text2);
     }
+
 
     private void SelectFile()
     {
@@ -533,9 +701,9 @@ public partial class View
             if (ofd.ShowDialog() == DialogResult.OK)
             {
                 SetSelectedImagePath(ofd.FileName);
+                UpdateAvailableMethods(ofd.FileName);
                 UpdateStatus($"Выбран файл: {Path.GetFileName(ofd.FileName)}");
                 ChosenStatus = true;
-                UpdateAvailableMethods(ofd.FileName);
                 SelectedFileWindow();
             }
         }
@@ -546,12 +714,13 @@ public partial class View
         if (!ChosenStatus) return;
         MainPanel.Controls.Clear();
         MainPanel.Padding = new Padding(0, 130, 0, 0);
-        var image = new PictureBox { Dock = DockStyle.Top, Image = Image.FromFile("imgs/chosen.png"), SizeMode = PictureBoxSizeMode.CenterImage };
+        var image = new PictureBox { Dock = DockStyle.Top, BackColor = Color.Transparent, Image = Image.FromFile("imgs/chosen.png"), SizeMode = PictureBoxSizeMode.CenterImage };
         var text = new Label
         {
             Dock = DockStyle.Top,
             Text = lblStatus.Text.Length > 36 ? lblStatus.Text.Substring(13, 23) + "..." : (lblStatus.Text.Length > 13 ? lblStatus.Text.Substring(13) : ""),
             Height = 50,
+            BackColor = Color.Transparent,
             Font = new Font("Segoe UI", 20),
             TextAlign = ContentAlignment.MiddleCenter,
             AutoSize = false
@@ -562,19 +731,22 @@ public partial class View
             Text = "Выберите действие в нижней панели управления",
             Height = 50,
             Font = new Font("Segoe UI", 13),
+            BackColor = Color.Transparent,
             ForeColor = Color.Gray,
             TextAlign = ContentAlignment.MiddleCenter,
             AutoSize = false
         };
-        var buttonContainer = new Panel { Dock = DockStyle.Top, Height = 70 };
+        var buttonContainer = new Panel { BackColor = Color.Transparent, Dock = DockStyle.Top, Height = 70 };
         btnSelectImage = new Guna2Button
         {
             Text = "Заменить файл",
             Size = new Size(180, 50),
             FillColor = ColorTranslator.FromHtml("#DDDDDD"),
             ForeColor = ColorTranslator.FromHtml("#666666"),
+            BackColor = Color.Transparent,
             BorderRadius = 25,
             Font = new Font("Segoe UI", 11),
+            Cursor = Cursors.Hand,
             Location = new Point((buttonContainer.Width - 180) / 2, 10),
             Anchor = AnchorStyles.Top
         };
@@ -590,29 +762,40 @@ public partial class View
     {
         MainPanel.Controls.Clear();
         MainPanel.Padding = new Padding(30);
-        var label = new Label { Text = "Скрытое сообщение", Font = new Font("Segoe UI", 14, FontStyle.Bold), Width = 500, Height = 40, Dock = DockStyle.Top };
+        var label = new Label { BackColor = Color.Transparent, Text = "Скрытое сообщение", Font = new Font("Segoe UI", 14, FontStyle.Bold), Width = 500, Height = 40, Dock = DockStyle.Top };
         txt = new Guna2TextBox
         {
             PlaceholderText = "Введите текст, который нужно скрыть в файле...",
             Dock = DockStyle.Top,
+            BackColor = Color.Transparent,
             Height = 330,
             Multiline = true,
             BorderRadius = 10,
             FillColor = Color.WhiteSmoke
         };
-        cancel = new Label { Text = "Отмена", ForeColor = Color.Gray, Font = new Font("Segoe UI", 11), AutoSize = true, Dock = DockStyle.Top, Cursor = Cursors.Hand };
-        txt.KeyDown += (e, s) =>
+        cancel = new Label { Text = "Отмена", BackColor = Color.Transparent, ForeColor = Color.Gray, Font = new Font("Segoe UI", 11), AutoSize = true, Dock = DockStyle.Top, Cursor = Cursors.Hand };
+        var enterButton = new Guna2Button
         {
-            if (s.KeyCode == Keys.Enter)
-            {
-                var type = GetSelectedEncryptionType();
-                var pass = GetPassword();
-                EncryptionSettingsChanged?.Invoke(type, pass);
-                HideRequested?.Invoke(_selectedImagePath, txt.Text);
-            }
+            Text = "Зашифровать",
+            FillColor = ColorTranslator.FromHtml("#FF7F50"),
+            ForeColor = Color.White,
+            BackColor = Color.Transparent,
+            BorderRadius = 17,
+            Font = new Font("Segoe UI", 11),
+            Size = new Size(125, 40),
+            Location = new Point(330, 380),
+            Cursor = Cursors.Hand
+        };
+        enterButton.Click += (s, e) =>
+        {
+            var type = GetSelectedEncryptionType();
+            var pass = GetPassword();
+            EncryptionSettingsChanged?.Invoke(type, pass);
+            HideRequested?.Invoke(_selectedImagePath, txt.Text);
         };
         cancel.Click += (e, s) => MainWindow();
         MainPanel.Controls.Add(cancel);
+        MainPanel.Controls.Add(enterButton);
         MainPanel.Controls.Add(txt);
         MainPanel.Controls.Add(label);
     }
@@ -622,11 +805,12 @@ public partial class View
         if (MainPanel.InvokeRequired) { MainPanel.Invoke((MethodInvoker)(() => ShowExtractedData(data))); return; }
         MainPanel.Controls.Clear();
         MainPanel.Padding = new Padding(30);
-        var label = new Label { Text = "Извлечённое сообщение", Font = new Font("Segoe UI", 14, FontStyle.Bold), Dock = DockStyle.Top, Height = 40 };
+        var label = new Label { BackColor = Color.Transparent, Text = "Извлечённое сообщение", Font = new Font("Segoe UI", 14, FontStyle.Bold), Dock = DockStyle.Top, Height = 40 };
         var textBox = new Guna2TextBox
         {
             Text = string.IsNullOrEmpty(data) ? "Данные не найдены" : data,
             Dock = DockStyle.Top,
+            BackColor = Color.Transparent,
             Height = 330,
             Multiline = true,
             ReadOnly = true,
@@ -639,6 +823,7 @@ public partial class View
             Text = "Назад",
             FillColor = ColorTranslator.FromHtml("#FF7F50"),
             ForeColor = Color.White,
+            BackColor = Color.Transparent,
             BorderRadius = 17,
             Font = new Font("Segoe UI", 11),
             Size = new Size(120, 35),

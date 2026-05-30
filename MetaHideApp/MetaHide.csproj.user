@@ -4,6 +4,9 @@
     <Compile Update="view\Form1.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="view\InstructionForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="view\MyCustomToggleBtn.cs">
       <SubType>Component</SubType>
     </Compile>
