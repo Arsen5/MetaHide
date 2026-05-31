@@ -29,20 +29,19 @@ namespace MetaHide.model
                     Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
                     Path.GetFileNameWithoutExtension(imagePath) + "_hidden.bmp");
 
-                byte[] dataBytes = Encoding.UTF8.GetBytes(data);
-                byte[] allBytes = new byte[4 + dataBytes.Length];
-                byte[] lenBytes = BitConverter.GetBytes(dataBytes.Length);
-                Array.Copy(lenBytes, 0, allBytes, 0, 4);
-                Array.Copy(dataBytes, 0, allBytes, 4, dataBytes.Length);
-
                 if (_hiddenMode)
                 {
-                    // Скрытый режим: добавляем маркер и данные в конец
+                    // Скрытый режим: добавляем данные в конец файла
+                    // Формат: [данные] + [4 байта длины]
                     byte[] imageBytes = File.ReadAllBytes(imagePath);
+                    byte[] dataBytes = Encoding.UTF8.GetBytes(data);
+                    byte[] lenBytes = BitConverter.GetBytes(dataBytes.Length);
+
                     using (MemoryStream ms = new MemoryStream())
                     {
                         ms.Write(imageBytes, 0, imageBytes.Length);
-                        ms.Write(allBytes, 0, allBytes.Length);
+                        ms.Write(dataBytes, 0, dataBytes.Length);
+                        ms.Write(lenBytes, 0, 4);
                         File.WriteAllBytes(outputPath, ms.ToArray());
                     }
                     return (true, $"Данные скрыты в BMP через маркер в конец ({data.Length} символов)", outputPath);
@@ -50,30 +49,44 @@ namespace MetaHide.model
                 else
                 {
                     // LSB режим
-                    using (Bitmap bmp = new Bitmap(imagePath))
+                    using (Bitmap original = new Bitmap(imagePath))
                     {
-                        Rectangle rect = new Rectangle(0, 0, bmp.Width, bmp.Height);
-                        BitmapData bmpData = bmp.LockBits(rect, ImageLockMode.ReadWrite, bmp.PixelFormat);
-                        int stride = bmpData.Stride;
-                        int totalBytes = stride * bmp.Height;
-                        byte[] pixels = new byte[totalBytes];
-                        System.Runtime.InteropServices.Marshal.Copy(bmpData.Scan0, pixels, 0, totalBytes);
-
-                        int totalBits = allBytes.Length * 8;
-                        int bitPos = 0;
-
-                        for (int i = 0; i < totalBytes && bitPos < totalBits; i++)
+                        using (Bitmap workBmp = new Bitmap(original.Width, original.Height, PixelFormat.Format24bppRgb))
                         {
-                            int byteIdx = bitPos / 8;
-                            int bitIdx = bitPos % 8;
-                            int dataBit = (allBytes[byteIdx] >> bitIdx) & 1;
-                            pixels[i] = (byte)((pixels[i] & 0xFE) | dataBit);
-                            bitPos++;
-                        }
+                            using (Graphics g = Graphics.FromImage(workBmp))
+                            {
+                                g.DrawImage(original, 0, 0, original.Width, original.Height);
+                            }
 
-                        System.Runtime.InteropServices.Marshal.Copy(pixels, 0, bmpData.Scan0, totalBytes);
-                        bmp.UnlockBits(bmpData);
-                        bmp.Save(outputPath, ImageFormat.Bmp);
+                            byte[] dataBytes = Encoding.UTF8.GetBytes(data);
+                            byte[] allBytes = new byte[4 + dataBytes.Length];
+                            byte[] lenBytes = BitConverter.GetBytes(dataBytes.Length);
+                            Array.Copy(lenBytes, 0, allBytes, 0, 4);
+                            Array.Copy(dataBytes, 0, allBytes, 4, dataBytes.Length);
+
+                            Rectangle rect = new Rectangle(0, 0, workBmp.Width, workBmp.Height);
+                            BitmapData bmpData = workBmp.LockBits(rect, ImageLockMode.ReadWrite, workBmp.PixelFormat);
+                            int stride = bmpData.Stride;
+                            int totalBytesImg = stride * workBmp.Height;
+                            byte[] pixels = new byte[totalBytesImg];
+                            System.Runtime.InteropServices.Marshal.Copy(bmpData.Scan0, pixels, 0, totalBytesImg);
+
+                            int totalBits = allBytes.Length * 8;
+                            int bitPos = 0;
+
+                            for (int i = 0; i < totalBytesImg && bitPos < totalBits; i++)
+                            {
+                                int byteIdx = bitPos / 8;
+                                int bitIdx = bitPos % 8;
+                                int dataBit = (allBytes[byteIdx] >> bitIdx) & 1;
+                                pixels[i] = (byte)((pixels[i] & 0xFE) | dataBit);
+                                bitPos++;
+                            }
+
+                            System.Runtime.InteropServices.Marshal.Copy(pixels, 0, bmpData.Scan0, totalBytesImg);
+                            workBmp.UnlockBits(bmpData);
+                            workBmp.Save(outputPath, ImageFormat.Bmp);
+                        }
                     }
                     return (true, $"Данные скрыты в BMP через LSB ({data.Length} символов)", outputPath);
                 }
@@ -92,61 +105,71 @@ namespace MetaHide.model
                 {
                     // Извлечение из скрытого режима (данные в конце)
                     byte[] imageBytes = File.ReadAllBytes(imagePath);
+                    if (imageBytes.Length < 5)
+                        return (false, "Файл слишком мал", null);
 
-                    // Читаем последние 4 байта как длину
-                    if (imageBytes.Length < 5) return (false, "Файл слишком маленький", null);
-
+                    // Длина записана в последних 4 байтах
                     int dataLen = BitConverter.ToInt32(imageBytes, imageBytes.Length - 4);
-                    if (dataLen <= 0 || dataLen > 1000000)
+                    if (dataLen <= 0 || dataLen > 10_000_000)
                         return (false, $"Некорректная длина: {dataLen}", null);
 
-                    if (imageBytes.Length < 4 + dataLen)
-                        return (false, "Недостаточно данных", null);
+                    int startPos = imageBytes.Length - 4 - dataLen;
+                    if (startPos < 0)
+                        return (false, "Данные повреждены", null);
 
                     byte[] dataBytes = new byte[dataLen];
-                    Array.Copy(imageBytes, imageBytes.Length - 4 - dataLen, dataBytes, 0, dataLen);
+                    Array.Copy(imageBytes, startPos, dataBytes, 0, dataLen);
                     string text = Encoding.UTF8.GetString(dataBytes);
                     return (true, $"Извлечено {dataLen} байт", text);
                 }
                 else
                 {
                     // LSB извлечение
-                    using (Bitmap bmp = new Bitmap(imagePath))
+                    using (Bitmap original = new Bitmap(imagePath))
                     {
-                        Rectangle rect = new Rectangle(0, 0, bmp.Width, bmp.Height);
-                        BitmapData bmpData = bmp.LockBits(rect, ImageLockMode.ReadOnly, bmp.PixelFormat);
-                        int stride = bmpData.Stride;
-                        int totalBytes = stride * bmp.Height;
-                        byte[] pixels = new byte[totalBytes];
-                        System.Runtime.InteropServices.Marshal.Copy(bmpData.Scan0, pixels, 0, totalBytes);
-                        bmp.UnlockBits(bmpData);
-
-                        List<byte> readBytes = new List<byte>();
-                        int bitPos = 0;
-                        byte currentByte = 0;
-                        for (int i = 0; i < totalBytes; i++)
+                        using (Bitmap workBmp = new Bitmap(original.Width, original.Height, PixelFormat.Format24bppRgb))
                         {
-                            int bit = pixels[i] & 1;
-                            currentByte = (byte)(currentByte | (bit << bitPos));
-                            bitPos++;
-                            if (bitPos == 8)
+                            using (Graphics g = Graphics.FromImage(workBmp))
                             {
-                                readBytes.Add(currentByte);
-                                bitPos = 0;
-                                currentByte = 0;
+                                g.DrawImage(original, 0, 0, original.Width, original.Height);
                             }
+
+                            Rectangle rect = new Rectangle(0, 0, workBmp.Width, workBmp.Height);
+                            BitmapData bmpData = workBmp.LockBits(rect, ImageLockMode.ReadOnly, workBmp.PixelFormat);
+                            int stride = bmpData.Stride;
+                            int totalBytesImg = stride * workBmp.Height;
+                            byte[] pixels = new byte[totalBytesImg];
+                            System.Runtime.InteropServices.Marshal.Copy(bmpData.Scan0, pixels, 0, totalBytesImg);
+                            workBmp.UnlockBits(bmpData);
+
+                            List<byte> readBytes = new List<byte>();
+                            int bitPos = 0;
+                            byte currentByte = 0;
+
+                            for (int i = 0; i < totalBytesImg; i++)
+                            {
+                                int bit = pixels[i] & 1;
+                                currentByte = (byte)(currentByte | (bit << bitPos));
+                                bitPos++;
+                                if (bitPos == 8)
+                                {
+                                    readBytes.Add(currentByte);
+                                    bitPos = 0;
+                                    currentByte = 0;
+                                }
+                            }
+
+                            if (readBytes.Count < 4)
+                                return (false, "Недостаточно данных", null);
+
+                            int dataLen = BitConverter.ToInt32(readBytes.GetRange(0, 4).ToArray(), 0);
+                            if (dataLen <= 0 || dataLen > readBytes.Count - 4)
+                                return (false, $"Некорректная длина: {dataLen}", null);
+
+                            byte[] dataBytes = readBytes.GetRange(4, dataLen).ToArray();
+                            string text = Encoding.UTF8.GetString(dataBytes);
+                            return (true, $"Извлечено {dataLen} байт", text);
                         }
-
-                        if (readBytes.Count < 4)
-                            return (false, "Недостаточно данных", null);
-
-                        int dataLen = BitConverter.ToInt32(readBytes.GetRange(0, 4).ToArray(), 0);
-                        if (dataLen <= 0 || dataLen > readBytes.Count - 4)
-                            return (false, $"Некорректная длина: {dataLen}", null);
-
-                        byte[] dataBytes = readBytes.GetRange(4, dataLen).ToArray();
-                        string text = Encoding.UTF8.GetString(dataBytes);
-                        return (true, $"Извлечено {dataLen} байт", text);
                     }
                 }
             }

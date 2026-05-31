@@ -17,50 +17,38 @@ namespace MetaHide.tests
             _model = new Model();
             _testImagesFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "TestImages");
             _results = new List<TestResult>();
-
             Directory.CreateDirectory(_testImagesFolder);
         }
 
         public void RunTests()
         {
             Log("=== ЗАПУСК ТЕСТОВ ===");
-            Log($"Папка с изображениями: {_testImagesFolder}");
+            Log($"Папка: {_testImagesFolder}");
 
             var imageFiles = GetTestImages();
             if (imageFiles.Count == 0)
             {
-                Log("Нет изображений в папке TestImages!");
-                Log("Добавьте PNG, JPG, BMP, GIF файлы в папку TestImages на рабочем столе");
+                Log("Нет изображений! Добавьте PNG, JPG, BMP, GIF в папку TestImages");
                 return;
             }
+            Log($"Найдено {imageFiles.Count} изображений\n");
 
-            Log($"Найдено {imageFiles.Count} изображений");
-            Log("");
-
-            foreach (var imageFile in imageFiles)
+            // 1. Базовые тесты для PNG/JPEG (обычный и скрытый режимы, с шифрованием)
+            foreach (var img in imageFiles)
             {
-                string ext = Path.GetExtension(imageFile).ToLower();
+                string ext = Path.GetExtension(img).ToLower();
                 if (ext == ".png" || ext == ".jpg" || ext == ".jpeg")
-                {
-                    TestImage(imageFile);
-                }
+                    TestStandard(img);
             }
 
-            // Отдельный тест LSB на PNG
-            TestLsbOnPng();
+            // 2. Специализированные тесты
+            TestLsbOnPng();       // LSB для PNG со всеми вариантами шифрования
+            TestBmpFiles();       // BMP (LSB и скрытый) со всеми вариантами шифрования
+            TestGifFiles();       // GIF (скрытый режим) со всеми вариантами шифрования
 
-            // Тесты BMP и GIF
-            TestBmpFiles();
-            TestGifFiles();
-
-            Log("=== ТЕСТЫ ЗАВЕРШЕНЫ ===");
-            Log("");
-            Log("Сводка по тестам:");
-            foreach (var result in _results)
-            {
-                string status = result.Success ? "[OK]" : "[FAIL]";
-                Log($"{status} {result.ImageName} - {result.Mode}: {result.ErrorMessage ?? result.Message}");
-            }
+            Log("\n=== СВОДКА ===");
+            foreach (var r in _results)
+                Log($"{(r.Success ? "[OK]" : "[FAIL]")} {r.ImageName} - {r.Mode}: {r.ErrorMessage ?? r.Message}");
         }
 
         private List<string> GetTestImages()
@@ -74,476 +62,235 @@ namespace MetaHide.tests
             return images;
         }
 
-        private void TestLsbOnPng()
-        {
-            Log("");
-            Log("=== ТЕСТ LSB НА PNG ===");
-
-            var pngFiles = Directory.GetFiles(_testImagesFolder, "*.png");
-            if (pngFiles.Length == 0)
-            {
-                Log("Нет PNG файлов для теста LSB");
-                return;
-            }
-
-            foreach (string imagePath in pngFiles)
-            {
-                string fileName = Path.GetFileName(imagePath);
-
-                // Тест 1: Английский текст
-                string testData1 = $"Hello World! LSB Test {DateTime.Now:HHmmss}";
-                RunLsbTest(imagePath, fileName, testData1, "Английский текст");
-
-                // Тест 2: Русский текст
-                string testData2 = $"Привет мир! Тест LSB на русском {DateTime.Now:HHmmss}";
-                RunLsbTest(imagePath, fileName, testData2, "Русский текст");
-
-                // Тест 3: Длинный текст (200+ символов)
-                string testData3 = new string('A', 200) + new string('Б', 200) + DateTime.Now.ToString("HHmmss");
-                RunLsbTest(imagePath, fileName, testData3, "Длинный текст");
-            }
-        }
-
-        private void RunLsbTest(string imagePath, string fileName, string testData, string testType)
-        {
-            Log($"  [{testType}] Тест на {fileName}");
-
-            try
-            {
-                _model.SetMethod("lsb");
-                _model.SetHiddenMode(false);
-                _model.SetEncryptionSettings(EncryptionModel.EncryptionType.None, "");
-                _model.SetCompressionSettings(false, 1);
-
-                var hideResult = _model.HideData(imagePath, testData);
-                if (!hideResult.success)
-                {
-                    Log($"    ОШИБКА скрытия: {hideResult.message}");
-                    _results.Add(new TestResult { ImageName = fileName, Mode = $"LSB-{testType}", Success = false, ErrorMessage = hideResult.message });
-                    return;
-                }
-
-                var extractResult = _model.ExtractData(hideResult.outputPath);
-                if (!extractResult.success)
-                {
-                    Log($"    ОШИБКА извлечения: {extractResult.message}");
-                    _results.Add(new TestResult { ImageName = fileName, Mode = $"LSB-{testType}", Success = false, ErrorMessage = extractResult.message });
-                    try { File.Delete(hideResult.outputPath); } catch { }
-                    return;
-                }
-
-                bool success = extractResult.data == testData;
-                Log($"    {testType}: {(success ? "✓ ПРОЙДЕН" : "✗ НЕ ПРОЙДЕН")}");
-                Log($"    Ожидалось: {testData.Length} символов");
-                Log($"    Получено: {extractResult.data?.Length ?? 0} символов");
-
-                if (!success)
-                {
-                    Log($"    Оригинал: {testData}");
-                    Log($"    Извлечено: {extractResult.data}");
-                }
-
-                _results.Add(new TestResult { ImageName = fileName, Mode = $"LSB-{testType}", Success = success, Message = success ? "OK" : "Данные не совпадают" });
-
-                try { File.Delete(hideResult.outputPath); } catch { }
-            }
-            catch (Exception ex)
-            {
-                Log($"    ИСКЛЮЧЕНИЕ: {ex.Message}");
-                _results.Add(new TestResult { ImageName = fileName, Mode = $"LSB-{testType}", Success = false, ErrorMessage = ex.Message });
-            }
-        }
-
-        private void TestImage(string imagePath)
+        // ========== БАЗОВЫЕ ТЕСТЫ ДЛЯ PNG/JPEG ==========
+        private void TestStandard(string imagePath)
         {
             string fileName = Path.GetFileName(imagePath);
-            Log($"Тестируем: {fileName} ({new FileInfo(imagePath).Length} байт)");
-
-            if (!IsFileValid(imagePath))
+            Log($"\nТестируем: {fileName} ({new FileInfo(imagePath).Length} байт)");
+            if (!IsValidImage(imagePath))
             {
-                Log($"  Файл не является валидным изображением, пропускаем");
-                _results.Add(new TestResult
-                {
-                    ImageName = fileName,
-                    Mode = "All",
-                    Success = false,
-                    ErrorMessage = "Файл не является валидным изображением"
-                });
+                _results.Add(new TestResult { ImageName = fileName, Mode = "Invalid", Success = false, ErrorMessage = "Невалидное изображение" });
                 return;
             }
 
-            TestVisibleMode(imagePath, fileName);
-            TestHiddenMode(imagePath, fileName);
-            TestSequentialMode(imagePath, fileName);
-            TestEncryptionMode(imagePath, fileName);
+            // Видимый режим
+            RunTest(imagePath, fileName, "exif", false, false, "Visible_NoEnc");
+            RunTest(imagePath, fileName, "exif", false, true, "Visible_XOR", EncryptionModel.EncryptionType.XOR, "pass");
+            RunTest(imagePath, fileName, "exif", false, true, "Visible_AES", EncryptionModel.EncryptionType.AES128, "pass");
 
-            Log("");
+            // Скрытый режим (маркер)
+            RunTest(imagePath, fileName, "marker", true, false, "Hidden_NoEnc");
+            RunTest(imagePath, fileName, "marker", true, true, "Hidden_XOR", EncryptionModel.EncryptionType.XOR, "pass");
+            RunTest(imagePath, fileName, "marker", true, true, "Hidden_AES", EncryptionModel.EncryptionType.AES128, "pass");
+
+            // Последовательный
+            TestSequential(imagePath, fileName);
         }
 
-        private void TestVisibleMode(string imagePath, string fileName)
+        private void RunTest(string imagePath, string fileName, string method, bool hiddenMode, bool useEnc, string testName,
+                            EncryptionModel.EncryptionType encType = EncryptionModel.EncryptionType.None, string password = "")
         {
-            Log("  Тест видимого режима...");
-
+            Log($"  {testName}...");
             try
             {
-                _model.SetMethod("exif");
-                _model.SetHiddenMode(false);
-                string testData = $"Test_Visible_{DateTime.Now:HHmmss}";
+                _model.SetMethod(method);
+                _model.SetHiddenMode(hiddenMode);
+                if (useEnc) _model.SetEncryptionSettings(encType, password);
+                else _model.SetEncryptionSettings(EncryptionModel.EncryptionType.None, "");
 
-                var hideResult = _model.HideData(imagePath, testData);
-                if (!hideResult.success)
+                string testData = $"{testName}_{DateTime.Now:HHmmss}";
+                var hide = _model.HideData(imagePath, testData);
+                if (!hide.success)
                 {
-                    Log($"    Ошибка записи: {hideResult.message}");
-                    _results.Add(new TestResult
-                    {
-                        ImageName = fileName,
-                        Mode = "Visible",
-                        Success = false,
-                        ErrorMessage = hideResult.message
-                    });
+                    Log($"    Ошибка записи: {hide.message}");
+                    _results.Add(new TestResult { ImageName = fileName, Mode = testName, Success = false, ErrorMessage = hide.message });
                     return;
                 }
 
-                var extractResult = _model.ExtractData(hideResult.outputPath);
-                bool success = extractResult.success && extractResult.data == testData;
-
-                Log($"    Запись: {hideResult.success}, Извлечение: {extractResult.success}");
-                Log($"    Ожидалось: {testData}");
-                Log($"    Получено: {extractResult.data}");
-
-                _results.Add(new TestResult
-                {
-                    ImageName = fileName,
-                    Mode = "Visible",
-                    Success = success,
-                    Message = success ? "OK" : extractResult.message,
-                    ExtractedData = extractResult.data
-                });
-
-                try { File.Delete(hideResult.outputPath); } catch { }
+                if (useEnc) _model.SetEncryptionSettings(encType, password);
+                var extract = _model.ExtractData(hide.outputPath);
+                bool ok = extract.success && extract.data == testData;
+                Log($"    {(ok ? "✓" : "✗")} Запись: {hide.success}, Извлечение: {extract.success}, Данные: {extract.data}");
+                _results.Add(new TestResult { ImageName = fileName, Mode = testName, Success = ok, Message = ok ? "OK" : extract.message });
+                try { File.Delete(hide.outputPath); } catch { }
             }
             catch (Exception ex)
             {
                 Log($"    Исключение: {ex.Message}");
-                _results.Add(new TestResult
-                {
-                    ImageName = fileName,
-                    Mode = "Visible",
-                    Success = false,
-                    ErrorMessage = ex.Message
-                });
+                _results.Add(new TestResult { ImageName = fileName, Mode = testName, Success = false, ErrorMessage = ex.Message });
             }
         }
 
-        private void TestHiddenMode(string imagePath, string fileName)
+        private void TestSequential(string imagePath, string fileName)
         {
-            Log("  Тест скрытого режима...");
-
-            try
-            {
-                _model.SetMethod("marker");
-                _model.SetHiddenMode(true);
-                string testData = $"Test_Hidden_{DateTime.Now:HHmmss}";
-
-                var hideResult = _model.HideData(imagePath, testData);
-                if (!hideResult.success)
-                {
-                    Log($"    Ошибка записи: {hideResult.message}");
-                    _results.Add(new TestResult
-                    {
-                        ImageName = fileName,
-                        Mode = "Hidden",
-                        Success = false,
-                        ErrorMessage = hideResult.message
-                    });
-                    return;
-                }
-
-                var extractResult = _model.ExtractData(hideResult.outputPath);
-                bool success = extractResult.success && extractResult.data == testData;
-
-                Log($"    Запись: {hideResult.success}, Извлечение: {extractResult.success}");
-                Log($"    Ожидалось: {testData}");
-                Log($"    Получено: {extractResult.data}");
-
-                _results.Add(new TestResult
-                {
-                    ImageName = fileName,
-                    Mode = "Hidden",
-                    Success = success,
-                    Message = success ? "OK" : extractResult.message,
-                    ExtractedData = extractResult.data
-                });
-
-                try { File.Delete(hideResult.outputPath); } catch { }
-            }
-            catch (Exception ex)
-            {
-                Log($"    Исключение: {ex.Message}");
-                _results.Add(new TestResult
-                {
-                    ImageName = fileName,
-                    Mode = "Hidden",
-                    Success = false,
-                    ErrorMessage = ex.Message
-                });
-            }
-        }
-
-        private void TestSequentialMode(string imagePath, string fileName)
-        {
-            Log("  Тест последовательной записи (видимый → скрытый)...");
-
+            Log("  Sequential (exif+marker)...");
             try
             {
                 string tempFile = Path.Combine(Path.GetTempPath(), $"seq_{Path.GetFileNameWithoutExtension(fileName)}.temp{Path.GetExtension(imagePath)}");
                 File.Copy(imagePath, tempFile, true);
-
                 string visibleData = $"VisibleSeq_{DateTime.Now:HHmmss}";
                 string hiddenData = $"HiddenSeq_{DateTime.Now:HHmmss}";
 
                 _model.SetMethod("exif");
                 _model.SetHiddenMode(false);
-                var visibleResult = _model.HideData(tempFile, visibleData);
-                if (!visibleResult.success)
-                {
-                    Log($"    Ошибка записи видимого: {visibleResult.message}");
-                    return;
-                }
+                var vis = _model.HideData(tempFile, visibleData);
+                if (!vis.success) { Log($"    Ошибка видимого: {vis.message}"); return; }
 
                 _model.SetMethod("marker");
                 _model.SetHiddenMode(true);
-                var hiddenResult = _model.HideData(tempFile, hiddenData);
-                if (!hiddenResult.success)
-                {
-                    Log($"    Ошибка записи скрытого: {hiddenResult.message}");
-                    return;
-                }
+                var hid = _model.HideData(tempFile, hiddenData);
+                if (!hid.success) { Log($"    Ошибка скрытого: {hid.message}"); return; }
 
                 _model.SetMethod("exif");
                 _model.SetHiddenMode(false);
-                var extractVisible = _model.ExtractData(visibleResult.outputPath);
-
+                var extVis = _model.ExtractData(vis.outputPath);
                 _model.SetMethod("marker");
                 _model.SetHiddenMode(true);
-                var extractHidden = _model.ExtractData(hiddenResult.outputPath);
+                var extHid = _model.ExtractData(hid.outputPath);
 
-                bool hasVisible = extractVisible.success && extractVisible.data == visibleData;
-                bool hasHidden = extractHidden.success && extractHidden.data == hiddenData;
-
-                if (hasVisible && hasHidden)
-                {
-                    Log($"    Успех: оба сообщения найдены");
-                    _results.Add(new TestResult
-                    {
-                        ImageName = fileName,
-                        Mode = "Sequential",
-                        Success = true,
-                        Message = "Видимый+скрытый работают"
-                    });
-                }
-                else
-                {
-                    Log($"    Ошибка: видимый={hasVisible}, скрытый={hasHidden}");
-                    _results.Add(new TestResult
-                    {
-                        ImageName = fileName,
-                        Mode = "Sequential",
-                        Success = false,
-                        ErrorMessage = "Не удалось извлечь оба сообщения"
-                    });
-                }
-
-                try { File.Delete(tempFile); } catch { }
-                try { File.Delete(visibleResult.outputPath); } catch { }
-                try { File.Delete(hiddenResult.outputPath); } catch { }
+                bool ok = extVis.success && extVis.data == visibleData && extHid.success && extHid.data == hiddenData;
+                Log($"    {(ok ? "✓" : "✗")} Видимый: {extVis.success}, Скрытый: {extHid.success}");
+                _results.Add(new TestResult { ImageName = fileName, Mode = "Sequential", Success = ok, Message = ok ? "OK" : "Не оба извлечены" });
+                try { File.Delete(tempFile); File.Delete(vis.outputPath); File.Delete(hid.outputPath); } catch { }
             }
-            catch (Exception ex)
+            catch (Exception ex) { Log($"    Исключение: {ex.Message}"); }
+        }
+
+        // ========== LSB НА PNG (с шифрованием) ==========
+        private void TestLsbOnPng()
+        {
+            var pngFiles = Directory.GetFiles(_testImagesFolder, "*.png");
+            if (pngFiles.Length == 0) { Log("\nНет PNG для LSB"); return; }
+            Log("\n=== LSB НА PNG ===");
+            foreach (string img in pngFiles)
             {
-                Log($"    Исключение: {ex.Message}");
+                string name = Path.GetFileName(img);
+                RunLsbVariant(img, name, "LSB_NoEnc", false, EncryptionModel.EncryptionType.None, "");
+                RunLsbVariant(img, name, "LSB_XOR", true, EncryptionModel.EncryptionType.XOR, "pass");
+                RunLsbVariant(img, name, "LSB_AES", true, EncryptionModel.EncryptionType.AES128, "pass");
             }
         }
 
-        private void TestEncryptionMode(string imagePath, string fileName)
+        private void RunLsbVariant(string imagePath, string fileName, string testName, bool useEnc, EncryptionModel.EncryptionType encType, string pwd)
         {
-            Log("  Тест шифрования (XOR и AES)...");
-
+            Log($"  {testName}...");
             try
             {
-                string password = "test123";
-                string testData = $"Encrypt_{DateTime.Now:HHmmss}";
+                _model.SetMethod("lsb");
+                _model.SetHiddenMode(false);
+                if (useEnc) _model.SetEncryptionSettings(encType, pwd);
+                else _model.SetEncryptionSettings(EncryptionModel.EncryptionType.None, "");
 
-                // XOR
-                _model.SetMethod("marker");
-                _model.SetEncryptionSettings(EncryptionModel.EncryptionType.XOR, password);
-                _model.SetCompressionSettings(true, 1);
-                _model.SetHiddenMode(true);
+                string testData = $"{testName}_{DateTime.Now:HHmmss}";
+                var hide = _model.HideData(imagePath, testData);
+                if (!hide.success) { Log($"    Ошибка записи: {hide.message}"); _results.Add(new TestResult { ImageName = fileName, Mode = testName, Success = false, ErrorMessage = hide.message }); return; }
 
-                var xorResult = _model.HideData(imagePath, testData);
-                if (xorResult.success)
-                {
-                    _model.SetEncryptionSettings(EncryptionModel.EncryptionType.XOR, password);
-                    var extractResult = _model.ExtractData(xorResult.outputPath);
-
-                    if (extractResult.success && extractResult.data == testData)
-                    {
-                        Log($"    XOR: OK");
-                        _results.Add(new TestResult
-                        {
-                            ImageName = fileName,
-                            Mode = "Encryption XOR",
-                            Success = true,
-                            Message = "XOR работает"
-                        });
-                    }
-                    else
-                    {
-                        Log($"    XOR: Ошибка - ожидалось '{testData}', получено '{extractResult.data}'");
-                        _results.Add(new TestResult
-                        {
-                            ImageName = fileName,
-                            Mode = "Encryption XOR",
-                            Success = false,
-                            ErrorMessage = "Не удалось расшифровать"
-                        });
-                    }
-                    try { File.Delete(xorResult.outputPath); } catch { }
-                }
-
-                // AES
-                _model.SetMethod("marker");
-                _model.SetEncryptionSettings(EncryptionModel.EncryptionType.AES128, password);
-                _model.SetCompressionSettings(true, 1);
-                _model.SetHiddenMode(true);
-
-                var aesResult = _model.HideData(imagePath, testData);
-                if (aesResult.success)
-                {
-                    _model.SetEncryptionSettings(EncryptionModel.EncryptionType.AES128, password);
-                    var extractResult = _model.ExtractData(aesResult.outputPath);
-
-                    if (extractResult.success && extractResult.data == testData)
-                    {
-                        Log($"    AES: OK");
-                        _results.Add(new TestResult
-                        {
-                            ImageName = fileName,
-                            Mode = "Encryption AES",
-                            Success = true,
-                            Message = "AES работает"
-                        });
-                    }
-                    else
-                    {
-                        Log($"    AES: Ошибка - ожидалось '{testData}', получено '{extractResult.data}'");
-                        _results.Add(new TestResult
-                        {
-                            ImageName = fileName,
-                            Mode = "Encryption AES",
-                            Success = false,
-                            ErrorMessage = "Не удалось расшифровать"
-                        });
-                    }
-                    try { File.Delete(aesResult.outputPath); } catch { }
-                }
+                if (useEnc) _model.SetEncryptionSettings(encType, pwd);
+                var extract = _model.ExtractData(hide.outputPath);
+                bool ok = extract.success && extract.data == testData;
+                Log($"    {(ok ? "✓" : "✗")} Извлечено: {extract.data}");
+                _results.Add(new TestResult { ImageName = fileName, Mode = testName, Success = ok, Message = ok ? "OK" : extract.message });
+                try { File.Delete(hide.outputPath); } catch { }
             }
-            catch (Exception ex)
-            {
-                Log($"    Исключение: {ex.Message}");
-            }
+            catch (Exception ex) { Log($"    Исключение: {ex.Message}"); _results.Add(new TestResult { ImageName = fileName, Mode = testName, Success = false, ErrorMessage = ex.Message }); }
         }
 
-        private bool IsFileValid(string filePath)
-        {
-            try
-            {
-                using (var img = System.Drawing.Image.FromFile(filePath))
-                {
-                    return true;
-                }
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
+        // ========== BMP (LSB и скрытый) с шифрованием ==========
         private void TestBmpFiles()
         {
             var bmpFiles = Directory.GetFiles(_testImagesFolder, "*.bmp");
-            if (bmpFiles.Length == 0)
+            if (bmpFiles.Length == 0) { Log("\nНет BMP файлов"); return; }
+            Log("\n=== BMP ===");
+            foreach (string img in bmpFiles)
             {
-                Log("Нет BMP файлов для теста");
-                return;
-            }
-            Log("");
-            Log("=== ТЕСТ BMP (LSB) ===");
-            foreach (string bmpPath in bmpFiles)
-            {
-                string fileName = Path.GetFileName(bmpPath);
-                string testData = $"BMP Test {DateTime.Now:HHmmss}";
-                _model.SetMethod("lsb");
-                _model.SetHiddenMode(false);
-                _model.SetEncryptionSettings(EncryptionModel.EncryptionType.None, "");
-                _model.SetCompressionSettings(false, 1);
-                var hide = _model.HideData(bmpPath, testData);
-                if (hide.success)
-                {
-                    var extract = _model.ExtractData(hide.outputPath);
-                    if (extract.success && extract.data == testData)
-                        Log($"  {fileName}: ✓ ПРОЙДЕН");
-                    else
-                        Log($"  {fileName}: ✗ НЕ ПРОЙДЕН (извлечено: {extract.data})");
-                    try { File.Delete(hide.outputPath); } catch { }
-                }
-                else
-                {
-                    Log($"  {fileName}: Ошибка записи: {hide.message}");
-                }
+                string name = Path.GetFileName(img);
+                // LSB
+                RunBmpVariant(img, name, "BMP_LSB_NoEnc", "lsb", false, false, EncryptionModel.EncryptionType.None, "");
+                RunBmpVariant(img, name, "BMP_LSB_XOR", "lsb", false, true, EncryptionModel.EncryptionType.XOR, "pass");
+                RunBmpVariant(img, name, "BMP_LSB_AES", "lsb", false, true, EncryptionModel.EncryptionType.AES128, "pass");
+                // Скрытый режим (маркер)
+                RunBmpVariant(img, name, "BMP_Hidden_NoEnc", "marker", true, false, EncryptionModel.EncryptionType.None, "");
+                RunBmpVariant(img, name, "BMP_Hidden_XOR", "marker", true, true, EncryptionModel.EncryptionType.XOR, "pass");
+                RunBmpVariant(img, name, "BMP_Hidden_AES", "marker", true, true, EncryptionModel.EncryptionType.AES128, "pass");
             }
         }
 
+        private void RunBmpVariant(string imagePath, string fileName, string testName, string method, bool hiddenMode, bool useEnc,
+                                   EncryptionModel.EncryptionType encType, string pwd)
+        {
+            Log($"  {testName}...");
+            try
+            {
+                _model.SetMethod(method);
+                _model.SetHiddenMode(hiddenMode);
+                if (useEnc) _model.SetEncryptionSettings(encType, pwd);
+                else _model.SetEncryptionSettings(EncryptionModel.EncryptionType.None, "");
+
+                string testData = $"{testName}_{DateTime.Now:HHmmss}";
+                var hide = _model.HideData(imagePath, testData);
+                if (!hide.success) { Log($"    Ошибка записи: {hide.message}"); _results.Add(new TestResult { ImageName = fileName, Mode = testName, Success = false, ErrorMessage = hide.message }); return; }
+
+                if (useEnc) _model.SetEncryptionSettings(encType, pwd);
+                var extract = _model.ExtractData(hide.outputPath);
+                bool ok = extract.success && extract.data == testData;
+                Log($"    {(ok ? "✓" : "✗")} Извлечено: {extract.data}");
+                _results.Add(new TestResult { ImageName = fileName, Mode = testName, Success = ok, Message = ok ? "OK" : extract.message });
+                try { File.Delete(hide.outputPath); } catch { }
+            }
+            catch (Exception ex) { Log($"    Исключение: {ex.Message}"); _results.Add(new TestResult { ImageName = fileName, Mode = testName, Success = false, ErrorMessage = ex.Message }); }
+        }
+
+        // ========== GIF (скрытый режим) с шифрованием ==========
         private void TestGifFiles()
         {
             var gifFiles = Directory.GetFiles(_testImagesFolder, "*.gif");
-            if (gifFiles.Length == 0)
+            if (gifFiles.Length == 0) { Log("\nНет GIF файлов"); return; }
+            Log("\n=== GIF ===");
+            foreach (string img in gifFiles)
             {
-                Log("Нет GIF файлов для теста");
-                return;
-            }
-            Log("");
-            Log("=== ТЕСТ GIF (комментарий) ===");
-            foreach (string gifPath in gifFiles)
-            {
-                string fileName = Path.GetFileName(gifPath);
-                string testData = $"GIF Test {DateTime.Now:HHmmss}";
-                _model.SetMethod("gif");
-                _model.SetHiddenMode(false);
-                _model.SetEncryptionSettings(EncryptionModel.EncryptionType.None, "");
-                _model.SetCompressionSettings(false, 1);
-                var hide = _model.HideData(gifPath, testData);
-                if (hide.success)
-                {
-                    var extract = _model.ExtractData(hide.outputPath);
-                    if (extract.success && extract.data == testData)
-                        Log($"  {fileName}: ✓ ПРОЙДЕН");
-                    else
-                        Log($"  {fileName}: ✗ НЕ ПРОЙДЕН (извлечено: {extract.data})");
-                    try { File.Delete(hide.outputPath); } catch { }
-                }
-                else
-                {
-                    Log($"  {fileName}: Ошибка записи: {hide.message}");
-                }
+                string name = Path.GetFileName(img);
+                RunGifVariant(img, name, "GIF_Hidden_NoEnc", false, EncryptionModel.EncryptionType.None, "");
+                RunGifVariant(img, name, "GIF_Hidden_XOR", true, EncryptionModel.EncryptionType.XOR, "pass");
+                RunGifVariant(img, name, "GIF_Hidden_AES", true, EncryptionModel.EncryptionType.AES128, "pass");
             }
         }
 
-        private void Log(string message)
+        private void RunGifVariant(string imagePath, string fileName, string testName, bool useEnc, EncryptionModel.EncryptionType encType, string pwd)
+        {
+            Log($"  {testName}...");
+            try
+            {
+                _model.SetMethod("gif");
+                _model.SetHiddenMode(true); // для GIF используем скрытый режим
+                if (useEnc) _model.SetEncryptionSettings(encType, pwd);
+                else _model.SetEncryptionSettings(EncryptionModel.EncryptionType.None, "");
+
+                string testData = $"{testName}_{DateTime.Now:HHmmss}";
+                var hide = _model.HideData(imagePath, testData);
+                if (!hide.success) { Log($"    Ошибка записи: {hide.message}"); _results.Add(new TestResult { ImageName = fileName, Mode = testName, Success = false, ErrorMessage = hide.message }); return; }
+
+                if (useEnc) _model.SetEncryptionSettings(encType, pwd);
+                var extract = _model.ExtractData(hide.outputPath);
+                bool ok = extract.success && extract.data == testData;
+                Log($"    {(ok ? "✓" : "✗")} Извлечено: {extract.data}");
+                _results.Add(new TestResult { ImageName = fileName, Mode = testName, Success = ok, Message = ok ? "OK" : extract.message });
+                try { File.Delete(hide.outputPath); } catch { }
+            }
+            catch (Exception ex) { Log($"    Исключение: {ex.Message}"); _results.Add(new TestResult { ImageName = fileName, Mode = testName, Success = false, ErrorMessage = ex.Message }); }
+        }
+
+        private bool IsValidImage(string path)
+        {
+            try { using (var img = System.Drawing.Image.FromFile(path)) { return true; } }
+            catch { return false; }
+        }
+
+        private void Log(string msg)
         {
             string logPath = Path.Combine(Application.StartupPath, "metahide.log");
-            string logEntry = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} | {message}";
-            File.AppendAllText(logPath, logEntry + Environment.NewLine);
-            Console.WriteLine(message);
+            string entry = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} | {msg}";
+            File.AppendAllText(logPath, entry + Environment.NewLine);
+            Console.WriteLine(msg);
         }
     }
 
@@ -553,8 +300,6 @@ namespace MetaHide.tests
         public string Mode { get; set; }
         public bool Success { get; set; }
         public string Message { get; set; }
-        public string TestData { get; set; }
-        public string ExtractedData { get; set; }
         public string ErrorMessage { get; set; }
     }
 }

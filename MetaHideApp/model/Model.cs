@@ -82,11 +82,13 @@ public class Model : ISteganography
             long sourceSize = new FileInfo(imagePath).Length;
             byte[] dataBytes = Encoding.UTF8.GetBytes(data);
 
+            // Сжатие (только если включено И выбрано шифрование)
             if (_useCompression && _encryptionType != EncryptionModel.EncryptionType.None)
             {
                 dataBytes = _compressionModel.Compress(dataBytes, _compressionThresholdKB);
             }
 
+            // Шифрование (только если выбрано шифрование)
             if (_encryptionType != EncryptionModel.EncryptionType.None)
             {
                 dataBytes = _encryptionModel.Encrypt(dataBytes, _encryptionPassword, _encryptionType);
@@ -139,41 +141,35 @@ public class Model : ISteganography
                 string extractedData = result.data;
                 string finalText;
 
-                if (_selectedMethod == "lsb" || _selectedMethod == "bmp" || _selectedMethod == "gif")
+                // Если включено шифрование — расшифровываем
+                if (_encryptionType != EncryptionModel.EncryptionType.None)
                 {
-                    finalText = extractedData;
-                }
-                else if (IsBase64String(extractedData))
-                {
-                    byte[] extractedBytes = Convert.FromBase64String(extractedData);
+                    try
+                    {
+                        byte[] extractedBytes = Convert.FromBase64String(extractedData);
+                        byte[] decryptedBytes = _encryptionModel.Decrypt(extractedBytes, _encryptionPassword, _encryptionType);
 
-                    byte[] decryptedBytes;
-                    if (_encryptionType != EncryptionModel.EncryptionType.None)
-                    {
-                        decryptedBytes = _encryptionModel.Decrypt(extractedBytes, _encryptionPassword, _encryptionType);
-                    }
-                    else
-                    {
-                        decryptedBytes = extractedBytes;
-                    }
-
-                    byte[] finalBytes = decryptedBytes;
-                    if (_useCompression && _encryptionType != EncryptionModel.EncryptionType.None)
-                    {
-                        try
+                        // Распаковка если было сжатие
+                        if (_useCompression)
                         {
-                            finalBytes = _compressionModel.Decompress(decryptedBytes);
+                            try
+                            {
+                                decryptedBytes = _compressionModel.Decompress(decryptedBytes);
+                            }
+                            catch { }
                         }
-                        catch
-                        {
-                            finalBytes = decryptedBytes;
-                        }
-                    }
 
-                    finalText = Encoding.UTF8.GetString(finalBytes);
+                        finalText = Encoding.UTF8.GetString(decryptedBytes);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogOperation("Ошибка расшифровки", imagePath, "Расшифровка", ex.Message, sourceSize, 0);
+                        return (false, $"Ошибка расшифровки: {ex.Message}", null);
+                    }
                 }
                 else
                 {
+                    // Без шифрования
                     finalText = extractedData;
                 }
 
@@ -245,34 +241,6 @@ public class Model : ISteganography
                 return handler;
 
         return null;
-    }
-
-    private bool IsBase64String(string base64)
-    {
-        if (string.IsNullOrEmpty(base64))
-            return false;
-
-        foreach (char c in base64)
-        {
-            if (c < 32 || c > 126)
-                return false;
-        }
-
-        if (base64.Length % 4 != 0)
-            return false;
-
-        foreach (char c in base64)
-        {
-            if (!((c >= 'A' && c <= 'Z') ||
-                  (c >= 'a' && c <= 'z') ||
-                  (c >= '0' && c <= '9') ||
-                  c == '+' || c == '/' || c == '='))
-            {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     public bool HasHiddenData(string imagePath)
