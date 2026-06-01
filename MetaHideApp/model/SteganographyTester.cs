@@ -44,13 +44,38 @@ namespace MetaHide.tests
             // 2. Специализированные тесты
             TestLsbOnPng();       // LSB для PNG со всеми вариантами шифрования
             TestBmpFiles();       // BMP (LSB и скрытый) со всеми вариантами шифрования
-            TestGifFiles();       // GIF (скрытый режим) со всеми вариантами шифрования
+            TestGifFiles();         // GIF (скрытый режим) со всеми вариантами шифрования
+            TestJStegFiles();
+            
 
             Log("\n=== СВОДКА ===");
             foreach (var r in _results)
                 Log($"{(r.Success ? "[OK]" : "[FAIL]")} {r.ImageName} - {r.Mode}: {r.ErrorMessage ?? r.Message}");
         }
-
+        private void TestJStegFiles()
+        {
+            var jpgFiles = Directory.GetFiles(_testImagesFolder, "*.jpg");
+            if (jpgFiles.Length == 0) { Log("Нет JPG файлов для теста JSteg"); return; }
+            Log("");
+            Log("=== ТЕСТ JSteg ===");
+            foreach (string img in jpgFiles)
+            {
+                string name = Path.GetFileName(img);
+                string testData = $"JSteg Test {DateTime.Now:HHmmss}";
+                _model.SetMethod("jsteg");
+                _model.SetHiddenMode(false);
+                _model.SetEncryptionSettings(EncryptionModel.EncryptionType.None, "");
+                var hide = _model.HideData(img, testData);
+                if (hide.success)
+                {
+                    var extract = _model.ExtractData(hide.outputPath);
+                    bool ok = extract.success && extract.data == testData;
+                    Log($"  {name}: {(ok ? "✓" : "✗")} {extract.data}");
+                    try { File.Delete(hide.outputPath); } catch { }
+                }
+                else Log($"  {name}: Ошибка записи");
+            }
+        }
         private List<string> GetTestImages()
         {
             var images = new List<string>();

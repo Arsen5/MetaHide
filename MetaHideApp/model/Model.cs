@@ -29,7 +29,8 @@ public class Model : ISteganography
             new PngSteganography(),
             new LSBSteganography(),
             new BmpSteganography(),
-            new GifSteganography()
+            new GifSteganography(),
+            new JStegSteganography()
         };
 
         _encryptionModel = new EncryptionModel();
@@ -82,13 +83,11 @@ public class Model : ISteganography
             long sourceSize = new FileInfo(imagePath).Length;
             byte[] dataBytes = Encoding.UTF8.GetBytes(data);
 
-            // Сжатие (только если включено И выбрано шифрование)
             if (_useCompression && _encryptionType != EncryptionModel.EncryptionType.None)
             {
                 dataBytes = _compressionModel.Compress(dataBytes, _compressionThresholdKB);
             }
 
-            // Шифрование (только если выбрано шифрование)
             if (_encryptionType != EncryptionModel.EncryptionType.None)
             {
                 dataBytes = _encryptionModel.Encrypt(dataBytes, _encryptionPassword, _encryptionType);
@@ -141,7 +140,6 @@ public class Model : ISteganography
                 string extractedData = result.data;
                 string finalText;
 
-                // Если включено шифрование — расшифровываем
                 if (_encryptionType != EncryptionModel.EncryptionType.None)
                 {
                     try
@@ -149,7 +147,6 @@ public class Model : ISteganography
                         byte[] extractedBytes = Convert.FromBase64String(extractedData);
                         byte[] decryptedBytes = _encryptionModel.Decrypt(extractedBytes, _encryptionPassword, _encryptionType);
 
-                        // Распаковка если было сжатие
                         if (_useCompression)
                         {
                             try
@@ -169,7 +166,6 @@ public class Model : ISteganography
                 }
                 else
                 {
-                    // Без шифрования
                     finalText = extractedData;
                 }
 
@@ -200,6 +196,15 @@ public class Model : ISteganography
 
         System.Diagnostics.Debug.WriteLine($"GetHandlerByMethod: selectedMethod={_selectedMethod}, ext={ext}");
 
+        // JSteg метод
+        if (_selectedMethod == "jsteg")
+        {
+            if (ext == ".jpg" || ext == ".jpeg")
+                return new JStegSteganography();
+            return null;
+        }
+
+        // LSB метод
         if (_selectedMethod == "lsb")
         {
             if (ext == ".png")
@@ -209,6 +214,7 @@ public class Model : ISteganography
             return null;
         }
 
+        // GIF метод
         if (_selectedMethod == "gif")
         {
             if (ext == ".gif")
@@ -216,6 +222,7 @@ public class Model : ISteganography
             return null;
         }
 
+        // Скрытый режим (маркер в конец)
         if (_selectedMethod == "marker")
         {
             if (ext == ".jpg" || ext == ".jpeg")
@@ -229,6 +236,7 @@ public class Model : ISteganography
             return null;
         }
 
+        // Обычный режим (EXIF/XMP)
         if (_selectedMethod == "exif")
         {
             foreach (var handler in _handlers)
@@ -236,6 +244,7 @@ public class Model : ISteganography
                     return handler;
         }
 
+        // fallback
         foreach (var handler in _handlers)
             if (handler.SupportsFormat(filePath))
                 return handler;
@@ -250,7 +259,68 @@ public class Model : ISteganography
         handler.SetHiddenMode(_hiddenMode);
         return handler.HasHiddenData(imagePath);
     }
+    public (bool success, string message, string data) ExtractDataAuto(string imagePath)
+    {
+        string ext = Path.GetExtension(imagePath).ToLower();
+        List<string> methodsToTry = new List<string>();
 
+        if (ext == ".jpg" || ext == ".jpeg")
+        {
+            methodsToTry.Add("jsteg");
+            methodsToTry.Add("exif");
+            methodsToTry.Add("marker");
+        }
+        else if (ext == ".png")
+        {
+            methodsToTry.Add("marker");
+            methodsToTry.Add("lsb");
+        }
+        else if (ext == ".bmp")
+        {
+            methodsToTry.Add("lsb");
+            methodsToTry.Add("marker");
+        }
+        else if (ext == ".gif")
+        {
+            methodsToTry.Add("gif");
+            methodsToTry.Add("marker");
+        }
+        else
+        {
+            return (false, "Формат не поддерживается", null);
+        }
+
+        foreach (var method in methodsToTry)
+        {
+            string oldMethod = _selectedMethod;
+            bool oldHidden = _hiddenMode;
+
+            SetMethod(method);
+            SetHiddenMode(method == "marker");
+
+            var result = ExtractData(imagePath);
+
+            SetMethod(oldMethod);
+            SetHiddenMode(oldHidden);
+
+            if (result.success && !string.IsNullOrEmpty(result.data))
+            {
+                // Проверка, что данные содержат печатные символы (не бинарный мусор)
+                bool hasPrintable = false;
+                foreach (char c in result.data)
+                {
+                    if (c >= 32 && c <= 126 || c == '\n' || c == '\r' || c == '\t')
+                    {
+                        hasPrintable = true;
+                        break;
+                    }
+                }
+                if (hasPrintable)
+                    return (true, $"Определён метод: {method}. {result.message}", result.data);
+            }
+        }
+        return (false, "Данные не найдены ни одним методом", null);
+    }
     public string GetAllExifFields(string imagePath)
     {
         var handler = GetHandlerByMethod(imagePath);

@@ -36,13 +36,12 @@ namespace MetaHide.controller
         {
             if (string.IsNullOrEmpty(imagePath))
             {
-                MessageBox.Show("Сначала выберите изображение!", "Внимание");
+                MessageBox.Show("Сначала выберите изображение!");
                 return;
             }
-
             if (string.IsNullOrEmpty(text))
             {
-                MessageBox.Show("Введите текст для скрытия!", "Внимание");
+                MessageBox.Show("Введите текст для скрытия!");
                 return;
             }
 
@@ -68,11 +67,10 @@ namespace MetaHide.controller
         {
             if (string.IsNullOrEmpty(imagePath))
             {
-                MessageBox.Show("Сначала выберите изображение!", "Внимание");
+                MessageBox.Show("Сначала выберите изображение!");
                 return;
             }
 
-            // Устанавливаем метод перед извлечением
             _model.SetMethod(_currentMethod);
             bool isHidden = (_currentMethod == "marker");
             _model.SetHiddenMode(isHidden);
@@ -82,9 +80,8 @@ namespace MetaHide.controller
             {
                 password = _view.ShowPasswordDialog();
                 if (password == null) return;
+                _model.SetEncryptionSettings(_model.GetEncryptionType(), password);
             }
-
-            _model.SetEncryptionSettings(_model.GetEncryptionType(), password ?? "");
 
             var result = _model.ExtractData(imagePath);
 
@@ -104,8 +101,7 @@ namespace MetaHide.controller
         private void OnModeChangedRequested(bool isHidden)
         {
             _model.SetHiddenMode(isHidden);
-            string modeName = isHidden ? "Скрытый (данные в конец файла)" : "Обычный";
-            _view.UpdateStatus($"Режим: {modeName}");
+            _view.UpdateStatus(isHidden ? "Скрытый режим" : "Обычный режим");
         }
 
         private void OnEncryptionSettingsChanged(EncryptionModel.EncryptionType type, string password)
@@ -117,8 +113,7 @@ namespace MetaHide.controller
         private void OnCompressionSettingsChanged(bool useCompression, int thresholdKB)
         {
             _model.SetCompressionSettings(useCompression, thresholdKB);
-            string status = useCompression ? $"Сжатие: включено (порог: {thresholdKB} КБ)" : "Сжатие: выключено";
-            _view.UpdateStatus(status);
+            _view.UpdateStatus(useCompression ? $"Сжатие включено (порог {thresholdKB} КБ)" : "Сжатие выключено");
         }
     }
 }

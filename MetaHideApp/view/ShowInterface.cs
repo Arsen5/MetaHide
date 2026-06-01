@@ -150,10 +150,24 @@ public partial class View
         {
             if (methodComboBox.SelectedIndex == -1 || methodComboBox.SelectedItem == null) return;
             string selectedText = methodComboBox.SelectedItem.ToString();
-            string methodType = selectedText.Contains("Обычный") ? "exif" :
-                               selectedText.Contains("Скрытый") && !selectedText.Contains("LSB") ? "marker" :
-                               selectedText.Contains("LSB") ? "lsb" :
-                               selectedText.Contains("GIF") ? "gif" : "exif";
+            string methodType;
+
+            if (selectedText.Contains("Обычный"))
+                methodType = "exif";
+            else if (selectedText.Contains("Скрытый") && !selectedText.Contains("JSteg"))
+                methodType = "marker";
+            else if (selectedText.Contains("LSB"))
+                methodType = "lsb";
+            else if (selectedText.Contains("GIF"))
+                methodType = "gif";
+            else if (selectedText.Contains("JSteg"))
+                methodType = "jsteg";
+            else
+                methodType = "exif";
+
+            // ДОБАВЬТЕ ЭТУ СТРОКУ ДЛЯ ОТЛАДКИ
+            MessageBox.Show($"Выбран метод: {methodType}");
+
             MethodTypeChanged?.Invoke(methodType);
             ModeChangedRequested?.Invoke(methodType == "marker");
             UpdateStatus($"Метод: {methodComboBox.Text}");
@@ -579,7 +593,7 @@ public partial class View
         {
             case ".jpg":
             case ".jpeg":
-                methodComboBox.Items.AddRange(new[] { "Обычный (видно в свойствах)", "Скрытый (маркер в конец)" });
+                methodComboBox.Items.AddRange(new[] { "Обычный (видно в свойствах)", "Скрытый (маркер в конец)", "JSteg (DCT)"});
                 methodComboBox.SelectedIndex = 0;
                 methodComboBox.Enabled = true;
                 break;
@@ -757,7 +771,16 @@ public partial class View
         MainPanel.Controls.Add(text);
         MainPanel.Controls.Add(image);
     }
-
+    public string GetSelectedMethod()
+    {
+        if (methodComboBox.SelectedItem == null) return "exif";
+        string selectedText = methodComboBox.SelectedItem.ToString();
+        if (selectedText.Contains("JSteg")) return "jsteg";
+        if (selectedText.Contains("LSB")) return "lsb";
+        if (selectedText.Contains("GIF")) return "gif";
+        if (selectedText.Contains("Скрытый") && !selectedText.Contains("JSteg")) return "marker";
+        return "exif";
+    }
     public void TextWindow()
     {
         MainPanel.Controls.Clear();
