@@ -165,8 +165,7 @@ public partial class View
             else
                 methodType = "exif";
 
-            // ДОБАВЬТЕ ЭТУ СТРОКУ ДЛЯ ОТЛАДКИ
-            MessageBox.Show($"Выбран метод: {methodType}");
+
 
             MethodTypeChanged?.Invoke(methodType);
             ModeChangedRequested?.Invoke(methodType == "marker");
@@ -602,6 +601,11 @@ public partial class View
                 methodComboBox.SelectedIndex = 0;
                 methodComboBox.Enabled = true;
                 break;
+            case ".wav":
+                methodComboBox.Items.AddRange(new[] { "LSB (в сэмплах)" });
+                methodComboBox.SelectedIndex = 0;
+                methodComboBox.Enabled = true;
+                break;
             case ".bmp":
                 methodComboBox.Items.AddRange(new[] { "LSB (в пикселях)", "Скрытый (маркер в конец)" });
                 methodComboBox.SelectedIndex = 0;
@@ -632,7 +636,7 @@ public partial class View
             if (files != null && files.Length > 0)
             {
                 string ext = Path.GetExtension(files[0]).ToLower();
-                if (ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".bmp" || ext == ".gif")
+                if (ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".bmp" || ext == ".gif" || ext == ".wav")
                 {
                     _selectedImagePath = files[0];
                     UpdateStatus($"Выбран файл: {Path.GetFileName(files[0])}");
@@ -711,7 +715,7 @@ public partial class View
     {
         using (OpenFileDialog ofd = new OpenFileDialog())
         {
-            ofd.Filter = "Изображения|*.jpg;*.jpeg;*.png;*.bmp;*.gif";
+            ofd.Filter = "Изображения и аудио|*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.wav";
             if (ofd.ShowDialog() == DialogResult.OK)
             {
                 SetSelectedImagePath(ofd.FileName);

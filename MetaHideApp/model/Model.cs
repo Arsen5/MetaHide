@@ -30,7 +30,8 @@ public class Model : ISteganography
             new LSBSteganography(),
             new BmpSteganography(),
             new GifSteganography(),
-            new JStegSteganography()
+            new JStegSteganography(),
+            new WavSteganography()
         };
 
         _encryptionModel = new EncryptionModel();
@@ -195,6 +196,12 @@ public class Model : ISteganography
         string ext = Path.GetExtension(filePath).ToLower();
 
         System.Diagnostics.Debug.WriteLine($"GetHandlerByMethod: selectedMethod={_selectedMethod}, ext={ext}");
+
+        // ========== WAV (всегда через LSB) ==========
+        if (ext == ".wav")
+        {
+            return new WavSteganography();
+        }
 
         // JSteg метод
         if (_selectedMethod == "jsteg")
