@@ -11,7 +11,6 @@ public class Model : ISteganography
     private readonly List<ISteganography> _handlers;
     private ISteganography _activeHandler;
     private bool _hiddenMode = false;
-
     private string _selectedMethod = "exif";
 
     private readonly EncryptionModel _encryptionModel;
@@ -31,7 +30,9 @@ public class Model : ISteganography
             new BmpSteganography(),
             new GifSteganography(),
             new JStegSteganography(),
-            new WavSteganography()
+            new WavSteganography(),
+            new Mp3Steganography(),
+            new VideoSteganography()
         };
 
         _encryptionModel = new EncryptionModel();
@@ -195,13 +196,17 @@ public class Model : ISteganography
     {
         string ext = Path.GetExtension(filePath).ToLower();
 
-        System.Diagnostics.Debug.WriteLine($"GetHandlerByMethod: selectedMethod={_selectedMethod}, ext={ext}");
-
-        // ========== WAV (всегда через LSB) ==========
+        // WAV
         if (ext == ".wav")
-        {
             return new WavSteganography();
-        }
+
+        // MP3
+        if (ext == ".mp3")
+            return new Mp3Steganography();
+
+        // Видео
+        if (ext == ".mp4" || ext == ".avi" || ext == ".mkv")
+            return new VideoSteganography();
 
         // JSteg метод
         if (_selectedMethod == "jsteg")
@@ -266,6 +271,7 @@ public class Model : ISteganography
         handler.SetHiddenMode(_hiddenMode);
         return handler.HasHiddenData(imagePath);
     }
+
     public (bool success, string message, string data) ExtractDataAuto(string imagePath)
     {
         string ext = Path.GetExtension(imagePath).ToLower();
@@ -312,7 +318,6 @@ public class Model : ISteganography
 
             if (result.success && !string.IsNullOrEmpty(result.data))
             {
-                // Проверка, что данные содержат печатные символы (не бинарный мусор)
                 bool hasPrintable = false;
                 foreach (char c in result.data)
                 {
@@ -328,6 +333,7 @@ public class Model : ISteganography
         }
         return (false, "Данные не найдены ни одним методом", null);
     }
+
     public string GetAllExifFields(string imagePath)
     {
         var handler = GetHandlerByMethod(imagePath);

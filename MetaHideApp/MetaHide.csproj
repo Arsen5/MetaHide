@@ -17,6 +17,8 @@
     <PackageReference Include="NExifTool" Version="0.12.0" />
     <PackageReference Include="Portable.LibJpeg.NET" Version="1.5.1.1" />
     <PackageReference Include="System.Drawing.Common" Version="10.0.8" />
+    <PackageReference Include="TagLibSharp" Version="2.3.0" />
+    <PackageReference Include="Xabe.FFmpeg" Version="6.0.2" />
   </ItemGroup>
 
   <!-- Копировать все файлы из корня проекта -->
@@ -38,9 +40,6 @@
     <None Update="jsteg.exe">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="model\Video\" />
   </ItemGroup>
 
 </Project>

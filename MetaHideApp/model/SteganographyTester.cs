@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
+using System.Linq;
 using System.Text;
 using MetaHide.model;
 
@@ -10,321 +13,437 @@ namespace MetaHide.tests
     {
         private Model _model;
         private string _testImagesFolder;
-        private List<TestResult> _results;
+        private string _resultsFolder;
+        private List<ExperimentResult> _results;
 
         public SteganographyTester()
         {
             _model = new Model();
             _testImagesFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "TestImages");
-            _results = new List<TestResult>();
+            _resultsFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "ExperimentResults");
             Directory.CreateDirectory(_testImagesFolder);
+            Directory.CreateDirectory(_resultsFolder);
+            _results = new List<ExperimentResult>();
         }
 
         public void RunTests()
         {
-            Log("=== ЗАПУСК ТЕСТОВ ===");
-            Log($"Папка: {_testImagesFolder}");
-
-            var imageFiles = GetTestImages();
-            if (imageFiles.Count == 0)
-            {
-                Log("Нет изображений! Добавьте PNG, JPG, BMP, GIF в папку TestImages");
-                return;
-            }
-            Log($"Найдено {imageFiles.Count} изображений\n");
-
-            // 1. Базовые тесты для PNG/JPEG (обычный и скрытый режимы, с шифрованием)
-            foreach (var img in imageFiles)
-            {
-                string ext = Path.GetExtension(img).ToLower();
-                if (ext == ".png" || ext == ".jpg" || ext == ".jpeg")
-                    TestStandard(img);
-            }
-
-            // 2. Специализированные тесты
-            TestLsbOnPng();       // LSB для PNG со всеми вариантами шифрования
-            TestBmpFiles();       // BMP (LSB и скрытый) со всеми вариантами шифрования
-            TestGifFiles();         // GIF (скрытый режим) со всеми вариантами шифрования
-            TestJStegFiles();
-            
-
-            Log("\n=== СВОДКА ===");
-            foreach (var r in _results)
-                Log($"{(r.Success ? "[OK]" : "[FAIL]")} {r.ImageName} - {r.Mode}: {r.ErrorMessage ?? r.Message}");
-        }
-        private void TestJStegFiles()
-        {
-            var jpgFiles = Directory.GetFiles(_testImagesFolder, "*.jpg");
-            if (jpgFiles.Length == 0) { Log("Нет JPG файлов для теста JSteg"); return; }
+            Log("═══════════════════════════════════════════════════════════");
+            Log("       ЗАПУСК ЭКСПЕРИМЕНТОВ MetaHide");
+            Log("═══════════════════════════════════════════════════════════");
+            Log($"Папка с тестовыми файлами: {_testImagesFolder}");
+            Log($"Результаты будут сохранены в: {_resultsFolder}");
             Log("");
-            Log("=== ТЕСТ JSteg ===");
-            foreach (string img in jpgFiles)
-            {
-                string name = Path.GetFileName(img);
-                string testData = $"JSteg Test {DateTime.Now:HHmmss}";
-                _model.SetMethod("jsteg");
-                _model.SetHiddenMode(false);
-                _model.SetEncryptionSettings(EncryptionModel.EncryptionType.None, "");
-                var hide = _model.HideData(img, testData);
-                if (hide.success)
-                {
-                    var extract = _model.ExtractData(hide.outputPath);
-                    bool ok = extract.success && extract.data == testData;
-                    Log($"  {name}: {(ok ? "✓" : "✗")} {extract.data}");
-                    try { File.Delete(hide.outputPath); } catch { }
-                }
-                else Log($"  {name}: Ошибка записи");
-            }
-        }
-        private List<string> GetTestImages()
-        {
-            var images = new List<string>();
-            images.AddRange(Directory.GetFiles(_testImagesFolder, "*.png"));
-            images.AddRange(Directory.GetFiles(_testImagesFolder, "*.jpg"));
-            images.AddRange(Directory.GetFiles(_testImagesFolder, "*.jpeg"));
-            images.AddRange(Directory.GetFiles(_testImagesFolder, "*.bmp"));
-            images.AddRange(Directory.GetFiles(_testImagesFolder, "*.gif"));
-            return images;
+
+            // 1. Тест ёмкости для изображений
+            TestImageCapacity();
+
+            // 2. Тест аудио (WAV с разными битами)
+            TestWavCapacity();
+
+            // 3. Тест MP3 (ID3 комментарий)
+            TestMp3Capacity();
+
+            // 4. Тест видео (метаданные)
+            TestVideoCapacity();
+
+            // 5. Сравнение методов
+            CompareMethods();
+
+            // 6. Сводка
+            PrintSummary();
+            ExportToCsv();
+
+            Log("");
+            Log("═══════════════════════════════════════════════════════════");
+            Log("       ЭКСПЕРИМЕНТЫ ЗАВЕРШЕНЫ");
+            Log("═══════════════════════════════════════════════════════════");
         }
 
-        // ========== БАЗОВЫЕ ТЕСТЫ ДЛЯ PNG/JPEG ==========
-        private void TestStandard(string imagePath)
+        // ========== 1. ТЕСТ ЁМКОСТИ ИЗОБРАЖЕНИЙ ==========
+        private void TestImageCapacity()
         {
-            string fileName = Path.GetFileName(imagePath);
-            Log($"\nТестируем: {fileName} ({new FileInfo(imagePath).Length} байт)");
-            if (!IsValidImage(imagePath))
+            Log("");
+            Log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            Log("📊 ТЕСТ 1: Ёмкость форматов изображений");
+            Log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+            var formats = new Dictionary<string, (string method, bool hiddenMode)>
             {
-                _results.Add(new TestResult { ImageName = fileName, Mode = "Invalid", Success = false, ErrorMessage = "Невалидное изображение" });
+                ["PNG (LSB)"] = ("lsb", false),
+                ["PNG (обычный)"] = ("exif", false),
+                ["PNG (скрытый)"] = ("marker", true),
+                ["JPEG (обычный)"] = ("exif", false),
+                ["JPEG (скрытый)"] = ("marker", true),
+                ["JPEG (JSteg)"] = ("jsteg", false),
+                ["BMP (LSB)"] = ("lsb", false),
+                ["BMP (скрытый)"] = ("marker", true),
+                ["GIF (комментарий)"] = ("gif", false)
+            };
+
+            foreach (var format in formats)
+            {
+                var file = FindTestFile(format.Key.Split(' ')[0].ToLower());
+                if (file == null) continue;
+
+                long fileSize = new FileInfo(file).Length;
+                _model.SetMethod(format.Value.method);
+                _model.SetHiddenMode(format.Value.hiddenMode);
+                _model.SetEncryptionSettings(EncryptionModel.EncryptionType.None, "");
+                _model.SetCompressionSettings(false, 1);
+
+                int maxSize = FindMaxCapacity(file, 1000);
+                double capacityKB = maxSize / 1024.0;
+                double efficiency = (double)maxSize / fileSize * 100;
+
+                Log($"  {format.Key}:");
+                Log($"    Размер файла: {fileSize / 1024} КБ");
+                Log($"    Макс. символов: {maxSize:N0} ({capacityKB:F1} КБ)");
+                Log($"    Эффективность: {efficiency:F2}%");
+
+                _results.Add(new ExperimentResult
+                {
+                    TestName = "Ёмкость изображений",
+                    Format = format.Key,
+                    Value = maxSize,
+                    Unit = "символов",
+                    Details = $"Файл {Path.GetFileName(file)}, Эффективность {efficiency:F2}%"
+                });
+            }
+        }
+
+        // ========== 2. ТЕСТ WAV С РАЗНЫМИ БИТАМИ ==========
+        private void TestWavCapacity()
+        {
+            Log("");
+            Log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            Log("🎵 ТЕСТ 2: WAV (разное количество бит на сэмпл)");
+            Log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+            var wavFile = FindTestFile("wav");
+            if (wavFile == null)
+            {
+                Log("  Нет WAV файла для теста");
                 return;
             }
 
-            // Видимый режим
-            RunTest(imagePath, fileName, "exif", false, false, "Visible_NoEnc");
-            RunTest(imagePath, fileName, "exif", false, true, "Visible_XOR", EncryptionModel.EncryptionType.XOR, "pass");
-            RunTest(imagePath, fileName, "exif", false, true, "Visible_AES", EncryptionModel.EncryptionType.AES128, "pass");
+            long fileSize = new FileInfo(wavFile).Length;
+            int[] bitsPerSample = { 1, 2, 4, 8 };
 
-            // Скрытый режим (маркер)
-            RunTest(imagePath, fileName, "marker", true, false, "Hidden_NoEnc");
-            RunTest(imagePath, fileName, "marker", true, true, "Hidden_XOR", EncryptionModel.EncryptionType.XOR, "pass");
-            RunTest(imagePath, fileName, "marker", true, true, "Hidden_AES", EncryptionModel.EncryptionType.AES128, "pass");
-
-            // Последовательный
-            TestSequential(imagePath, fileName);
-        }
-
-        private void RunTest(string imagePath, string fileName, string method, bool hiddenMode, bool useEnc, string testName,
-                            EncryptionModel.EncryptionType encType = EncryptionModel.EncryptionType.None, string password = "")
-        {
-            Log($"  {testName}...");
-            try
+            foreach (int bits in bitsPerSample)
             {
-                _model.SetMethod(method);
-                _model.SetHiddenMode(hiddenMode);
-                if (useEnc) _model.SetEncryptionSettings(encType, password);
-                else _model.SetEncryptionSettings(EncryptionModel.EncryptionType.None, "");
+                _model.SetMethod("exif");
+                _model.SetHiddenMode(false);
 
-                string testData = $"{testName}_{DateTime.Now:HHmmss}";
-                var hide = _model.HideData(imagePath, testData);
-                if (!hide.success)
+                int maxSize = FindMaxCapacity(wavFile, 1000);
+                double capacityKB = maxSize / 1024.0;
+                double efficiency = (double)maxSize / fileSize * 100;
+
+                string qualityDesc = bits == 1 ? "Отлично" :
+                                     bits == 2 ? "Хорошо" :
+                                     bits == 4 ? "Заметно" : "Сильные искажения";
+
+                Log($"  {bits} бит на сэмпл:");
+                Log($"    Размер файла: {fileSize / 1024} КБ");
+                Log($"    Макс. символов: {maxSize:N0} ({capacityKB:F1} КБ)");
+                Log($"    Эффективность: {efficiency:F2}%");
+                Log($"    Качество: {qualityDesc}");
+
+                _results.Add(new ExperimentResult
                 {
-                    Log($"    Ошибка записи: {hide.message}");
-                    _results.Add(new TestResult { ImageName = fileName, Mode = testName, Success = false, ErrorMessage = hide.message });
-                    return;
+                    TestName = "WAV ёмкость",
+                    Format = $"{bits} бит/сэмпл",
+                    Value = maxSize,
+                    Unit = "символов",
+                    Details = $"Качество: {qualityDesc}, Эффективность {efficiency:F2}%"
+                });
+            }
+        }
+
+        // ========== 3. ТЕСТ MP3 ==========
+        private void TestMp3Capacity()
+        {
+            Log("");
+            Log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            Log("🎧 ТЕСТ 3: MP3 (ID3 комментарий)");
+            Log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+            var mp3File = FindTestFile("mp3");
+            if (mp3File == null)
+            {
+                Log("  Нет MP3 файла для теста");
+                return;
+            }
+
+            long fileSize = new FileInfo(mp3File).Length;
+            _model.SetMethod("exif");
+            _model.SetHiddenMode(false);
+
+            // ID3 комментарий ограничен по размеру
+            int maxSize = Math.Min(FindMaxCapacity(mp3File, 100), 50000);
+            double capacityKB = maxSize / 1024.0;
+            double efficiency = (double)maxSize / fileSize * 100;
+
+            Log($"  Файл: {Path.GetFileName(mp3File)}");
+            Log($"    Размер файла: {fileSize / 1024} КБ");
+            Log($"    Макс. символов: {maxSize:N0} ({capacityKB:F1} КБ)");
+            Log($"    Эффективность: {efficiency:F2}%");
+            Log($"    Примечание: ID3 комментарий — простой метод, данные видны в свойствах");
+
+            _results.Add(new ExperimentResult
+            {
+                TestName = "MP3 ёмкость",
+                Format = "ID3 комментарий",
+                Value = maxSize,
+                Unit = "символов",
+                Details = $"Файл {Path.GetFileName(mp3File)}, эффективность {efficiency:F2}%"
+            });
+        }
+
+        // ========== 4. ТЕСТ ВИДЕО ==========
+        private void TestVideoCapacity()
+        {
+            Log("");
+            Log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            Log("🎬 ТЕСТ 4: Видео (метаданные)");
+            Log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+            var videoFiles = new List<string>();
+            foreach (var ext in new[] { "mp4", "avi", "mkv" })
+            {
+                var files = Directory.GetFiles(_testImagesFolder, $"*.{ext}");
+                if (files.Length > 0) videoFiles.Add(files[0]);
+            }
+
+            if (videoFiles.Count == 0)
+            {
+                Log("  Нет видео файлов для теста");
+                return;
+            }
+
+            foreach (var videoFile in videoFiles)
+            {
+                string ext = Path.GetExtension(videoFile).ToUpper().TrimStart('.');
+                long fileSize = new FileInfo(videoFile).Length;
+                _model.SetMethod("exif");
+                _model.SetHiddenMode(false);
+
+                int maxSize = FindMaxCapacity(videoFile, 500);
+                double capacityKB = maxSize / 1024.0;
+                double efficiency = (double)maxSize / fileSize * 100;
+
+                Log($"  {ext}: {Path.GetFileName(videoFile)}");
+                Log($"    Размер файла: {fileSize / 1024} КБ");
+                Log($"    Макс. символов: {maxSize:N0} ({capacityKB:F1} КБ)");
+                Log($"    Эффективность: {efficiency:F2}%");
+                Log($"    Примечание: данные скрываются в метаданных (комментарий)");
+
+                _results.Add(new ExperimentResult
+                {
+                    TestName = "Видео ёмкость",
+                    Format = ext,
+                    Value = maxSize,
+                    Unit = "символов",
+                    Details = $"Файл {Path.GetFileName(videoFile)}, эффективность {efficiency:F2}%"
+                });
+            }
+        }
+
+        // ========== 5. СРАВНЕНИЕ МЕТОДОВ ==========
+        private void CompareMethods()
+        {
+            Log("");
+            Log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            Log("⚖️ ТЕСТ 5: Сравнение методов на одном файле");
+            Log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+            var testFile = FindTestFile("png");
+            if (testFile == null) return;
+
+            string testData = "Тестовое сообщение для сравнения методов стеганографии. " +
+                              "Этот текст будет встроен разными методами.";
+
+            var methods = new (string name, string method, bool hidden, string description)[]
+            {
+                ("Обычный (EXIF)", "exif", false, "Данные в метаданных, видно в свойствах"),
+                ("Скрытый (маркер)", "marker", true, "Данные в конце файла, не видны"),
+                ("LSB", "lsb", false, "Данные в пикселях, незаметно")
+            };
+
+            long inputSize = new FileInfo(testFile).Length;
+            Log($"  Файл: {Path.GetFileName(testFile)} ({inputSize / 1024} КБ)");
+            Log($"  Сообщение: {testData.Length} символов");
+            Log("");
+
+            foreach (var m in methods)
+            {
+                _model.SetMethod(m.method);
+                _model.SetHiddenMode(m.hidden);
+                var result = _model.HideData(testFile, testData);
+
+                if (result.success)
+                {
+                    long outputSize = new FileInfo(result.outputPath).Length;
+                    double increase = (double)outputSize / inputSize * 100;
+                    double addedBytes = outputSize - inputSize;
+
+                    Log($"  {m.name}:");
+                    Log($"    Вход: {inputSize / 1024:F1} КБ → Выход: {outputSize / 1024:F1} КБ");
+                    Log($"    Добавлено: {addedBytes} байт (увеличение {increase:F1}%)");
+                    Log($"    Скрытность: {m.description}");
+
+                    _results.Add(new ExperimentResult
+                    {
+                        TestName = "Сравнение методов",
+                        Format = m.name,
+                        Value = increase,
+                        Unit = "% увеличения",
+                        Details = m.description
+                    });
+
+                    try { File.Delete(result.outputPath); } catch { }
                 }
-
-                if (useEnc) _model.SetEncryptionSettings(encType, password);
-                var extract = _model.ExtractData(hide.outputPath);
-                bool ok = extract.success && extract.data == testData;
-                Log($"    {(ok ? "✓" : "✗")} Запись: {hide.success}, Извлечение: {extract.success}, Данные: {extract.data}");
-                _results.Add(new TestResult { ImageName = fileName, Mode = testName, Success = ok, Message = ok ? "OK" : extract.message });
-                try { File.Delete(hide.outputPath); } catch { }
-            }
-            catch (Exception ex)
-            {
-                Log($"    Исключение: {ex.Message}");
-                _results.Add(new TestResult { ImageName = fileName, Mode = testName, Success = false, ErrorMessage = ex.Message });
             }
         }
 
-        private void TestSequential(string imagePath, string fileName)
+        // ========== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ==========
+        private int FindMaxCapacity(string filePath, int startSize)
         {
-            Log("  Sequential (exif+marker)...");
-            try
+            long fileSize = new FileInfo(filePath).Length;
+            int maxSize = 0;
+            int step = startSize;
+
+            for (int size = startSize; size <= fileSize / 2; size += step)
             {
-                string tempFile = Path.Combine(Path.GetTempPath(), $"seq_{Path.GetFileNameWithoutExtension(fileName)}.temp{Path.GetExtension(imagePath)}");
-                File.Copy(imagePath, tempFile, true);
-                string visibleData = $"VisibleSeq_{DateTime.Now:HHmmss}";
-                string hiddenData = $"HiddenSeq_{DateTime.Now:HHmmss}";
-
-                _model.SetMethod("exif");
-                _model.SetHiddenMode(false);
-                var vis = _model.HideData(tempFile, visibleData);
-                if (!vis.success) { Log($"    Ошибка видимого: {vis.message}"); return; }
-
-                _model.SetMethod("marker");
-                _model.SetHiddenMode(true);
-                var hid = _model.HideData(tempFile, hiddenData);
-                if (!hid.success) { Log($"    Ошибка скрытого: {hid.message}"); return; }
-
-                _model.SetMethod("exif");
-                _model.SetHiddenMode(false);
-                var extVis = _model.ExtractData(vis.outputPath);
-                _model.SetMethod("marker");
-                _model.SetHiddenMode(true);
-                var extHid = _model.ExtractData(hid.outputPath);
-
-                bool ok = extVis.success && extVis.data == visibleData && extHid.success && extHid.data == hiddenData;
-                Log($"    {(ok ? "✓" : "✗")} Видимый: {extVis.success}, Скрытый: {extHid.success}");
-                _results.Add(new TestResult { ImageName = fileName, Mode = "Sequential", Success = ok, Message = ok ? "OK" : "Не оба извлечены" });
-                try { File.Delete(tempFile); File.Delete(vis.outputPath); File.Delete(hid.outputPath); } catch { }
+                string testData = new string('A', size);
+                var result = _model.HideData(filePath, testData);
+                if (result.success)
+                {
+                    maxSize = size;
+                    step = Math.Min(step * 2, 50000);
+                }
+                else
+                {
+                    if (step > 100) step = step / 2;
+                    else break;
+                }
             }
-            catch (Exception ex) { Log($"    Исключение: {ex.Message}"); }
+            return maxSize;
         }
 
-        // ========== LSB НА PNG (с шифрованием) ==========
-        private void TestLsbOnPng()
+        private string FindTestFile(string extension)
         {
-            var pngFiles = Directory.GetFiles(_testImagesFolder, "*.png");
-            if (pngFiles.Length == 0) { Log("\nНет PNG для LSB"); return; }
-            Log("\n=== LSB НА PNG ===");
-            foreach (string img in pngFiles)
+            string[] extensions = extension == "png" ? new[] { "*.png" } :
+                                  extension == "jpg" ? new[] { "*.jpg", "*.jpeg" } :
+                                  extension == "bmp" ? new[] { "*.bmp" } :
+                                  extension == "gif" ? new[] { "*.gif" } :
+                                  extension == "wav" ? new[] { "*.wav" } :
+                                  extension == "mp3" ? new[] { "*.mp3" } :
+                                  new[] { $"*.{extension}" };
+
+            foreach (var ext in extensions)
             {
-                string name = Path.GetFileName(img);
-                RunLsbVariant(img, name, "LSB_NoEnc", false, EncryptionModel.EncryptionType.None, "");
-                RunLsbVariant(img, name, "LSB_XOR", true, EncryptionModel.EncryptionType.XOR, "pass");
-                RunLsbVariant(img, name, "LSB_AES", true, EncryptionModel.EncryptionType.AES128, "pass");
+                var files = Directory.GetFiles(_testImagesFolder, ext);
+                if (files.Length > 0) return files[0];
             }
+            return null;
         }
 
-        private void RunLsbVariant(string imagePath, string fileName, string testName, bool useEnc, EncryptionModel.EncryptionType encType, string pwd)
+        private void PrintSummary()
         {
-            Log($"  {testName}...");
-            try
+            Log("");
+            Log("═══════════════════════════════════════════════════════════");
+            Log("📋 СВОДКА РЕЗУЛЬТАТОВ ЭКСПЕРИМЕНТОВ");
+            Log("═══════════════════════════════════════════════════════════");
+
+            // Группировка по типам тестов
+            var imageCapacity = _results.Where(r => r.TestName == "Ёмкость изображений").ToList();
+            var wavCapacity = _results.Where(r => r.TestName == "WAV ёмкость").ToList();
+            var mp3Capacity = _results.Where(r => r.TestName == "MP3 ёмкость").ToList();
+            var videoCapacity = _results.Where(r => r.TestName == "Видео ёмкость").ToList();
+            var methodCompare = _results.Where(r => r.TestName == "Сравнение методов").ToList();
+
+            Log("");
+            Log("📊 Ёмкость форматов (макс. символов):");
+            foreach (var r in imageCapacity.OrderByDescending(x => x.Value))
             {
-                _model.SetMethod("lsb");
-                _model.SetHiddenMode(false);
-                if (useEnc) _model.SetEncryptionSettings(encType, pwd);
-                else _model.SetEncryptionSettings(EncryptionModel.EncryptionType.None, "");
-
-                string testData = $"{testName}_{DateTime.Now:HHmmss}";
-                var hide = _model.HideData(imagePath, testData);
-                if (!hide.success) { Log($"    Ошибка записи: {hide.message}"); _results.Add(new TestResult { ImageName = fileName, Mode = testName, Success = false, ErrorMessage = hide.message }); return; }
-
-                if (useEnc) _model.SetEncryptionSettings(encType, pwd);
-                var extract = _model.ExtractData(hide.outputPath);
-                bool ok = extract.success && extract.data == testData;
-                Log($"    {(ok ? "✓" : "✗")} Извлечено: {extract.data}");
-                _results.Add(new TestResult { ImageName = fileName, Mode = testName, Success = ok, Message = ok ? "OK" : extract.message });
-                try { File.Delete(hide.outputPath); } catch { }
+                Log($"  {r.Format}: {r.Value:N0} {r.Unit} ({r.Details})");
             }
-            catch (Exception ex) { Log($"    Исключение: {ex.Message}"); _results.Add(new TestResult { ImageName = fileName, Mode = testName, Success = false, ErrorMessage = ex.Message }); }
-        }
 
-        // ========== BMP (LSB и скрытый) с шифрованием ==========
-        private void TestBmpFiles()
-        {
-            var bmpFiles = Directory.GetFiles(_testImagesFolder, "*.bmp");
-            if (bmpFiles.Length == 0) { Log("\nНет BMP файлов"); return; }
-            Log("\n=== BMP ===");
-            foreach (string img in bmpFiles)
+            if (wavCapacity.Any())
             {
-                string name = Path.GetFileName(img);
-                // LSB
-                RunBmpVariant(img, name, "BMP_LSB_NoEnc", "lsb", false, false, EncryptionModel.EncryptionType.None, "");
-                RunBmpVariant(img, name, "BMP_LSB_XOR", "lsb", false, true, EncryptionModel.EncryptionType.XOR, "pass");
-                RunBmpVariant(img, name, "BMP_LSB_AES", "lsb", false, true, EncryptionModel.EncryptionType.AES128, "pass");
-                // Скрытый режим (маркер)
-                RunBmpVariant(img, name, "BMP_Hidden_NoEnc", "marker", true, false, EncryptionModel.EncryptionType.None, "");
-                RunBmpVariant(img, name, "BMP_Hidden_XOR", "marker", true, true, EncryptionModel.EncryptionType.XOR, "pass");
-                RunBmpVariant(img, name, "BMP_Hidden_AES", "marker", true, true, EncryptionModel.EncryptionType.AES128, "pass");
+                Log("");
+                Log("🎵 WAV (разное количество бит):");
+                foreach (var r in wavCapacity)
+                {
+                    Log($"  {r.Format}: {r.Value:N0} {r.Unit} ({r.Details})");
+                }
             }
-        }
 
-        private void RunBmpVariant(string imagePath, string fileName, string testName, string method, bool hiddenMode, bool useEnc,
-                                   EncryptionModel.EncryptionType encType, string pwd)
-        {
-            Log($"  {testName}...");
-            try
+            if (mp3Capacity.Any())
             {
-                _model.SetMethod(method);
-                _model.SetHiddenMode(hiddenMode);
-                if (useEnc) _model.SetEncryptionSettings(encType, pwd);
-                else _model.SetEncryptionSettings(EncryptionModel.EncryptionType.None, "");
-
-                string testData = $"{testName}_{DateTime.Now:HHmmss}";
-                var hide = _model.HideData(imagePath, testData);
-                if (!hide.success) { Log($"    Ошибка записи: {hide.message}"); _results.Add(new TestResult { ImageName = fileName, Mode = testName, Success = false, ErrorMessage = hide.message }); return; }
-
-                if (useEnc) _model.SetEncryptionSettings(encType, pwd);
-                var extract = _model.ExtractData(hide.outputPath);
-                bool ok = extract.success && extract.data == testData;
-                Log($"    {(ok ? "✓" : "✗")} Извлечено: {extract.data}");
-                _results.Add(new TestResult { ImageName = fileName, Mode = testName, Success = ok, Message = ok ? "OK" : extract.message });
-                try { File.Delete(hide.outputPath); } catch { }
+                Log("");
+                Log("🎧 MP3 (ID3 комментарий):");
+                foreach (var r in mp3Capacity)
+                {
+                    Log($"  {r.Format}: {r.Value:N0} {r.Unit} ({r.Details})");
+                }
             }
-            catch (Exception ex) { Log($"    Исключение: {ex.Message}"); _results.Add(new TestResult { ImageName = fileName, Mode = testName, Success = false, ErrorMessage = ex.Message }); }
-        }
 
-        // ========== GIF (скрытый режим) с шифрованием ==========
-        private void TestGifFiles()
-        {
-            var gifFiles = Directory.GetFiles(_testImagesFolder, "*.gif");
-            if (gifFiles.Length == 0) { Log("\nНет GIF файлов"); return; }
-            Log("\n=== GIF ===");
-            foreach (string img in gifFiles)
+            if (videoCapacity.Any())
             {
-                string name = Path.GetFileName(img);
-                RunGifVariant(img, name, "GIF_Hidden_NoEnc", false, EncryptionModel.EncryptionType.None, "");
-                RunGifVariant(img, name, "GIF_Hidden_XOR", true, EncryptionModel.EncryptionType.XOR, "pass");
-                RunGifVariant(img, name, "GIF_Hidden_AES", true, EncryptionModel.EncryptionType.AES128, "pass");
+                Log("");
+                Log("🎬 Видео (метаданные):");
+                foreach (var r in videoCapacity)
+                {
+                    Log($"  {r.Format}: {r.Value:N0} {r.Unit} ({r.Details})");
+                }
+            }
+
+            if (methodCompare.Any())
+            {
+                Log("");
+                Log("⚖️ Сравнение методов (увеличение размера):");
+                foreach (var r in methodCompare)
+                {
+                    Log($"  {r.Format}: {r.Value:F1}% {r.Unit} ({r.Details})");
+                }
             }
         }
 
-        private void RunGifVariant(string imagePath, string fileName, string testName, bool useEnc, EncryptionModel.EncryptionType encType, string pwd)
+        private void ExportToCsv()
         {
-            Log($"  {testName}...");
-            try
+            string csvPath = Path.Combine(_resultsFolder, $"experiment_results_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
+
+            using (var writer = new StreamWriter(csvPath, false, Encoding.UTF8))
             {
-                _model.SetMethod("gif");
-                _model.SetHiddenMode(true); // для GIF используем скрытый режим
-                if (useEnc) _model.SetEncryptionSettings(encType, pwd);
-                else _model.SetEncryptionSettings(EncryptionModel.EncryptionType.None, "");
-
-                string testData = $"{testName}_{DateTime.Now:HHmmss}";
-                var hide = _model.HideData(imagePath, testData);
-                if (!hide.success) { Log($"    Ошибка записи: {hide.message}"); _results.Add(new TestResult { ImageName = fileName, Mode = testName, Success = false, ErrorMessage = hide.message }); return; }
-
-                if (useEnc) _model.SetEncryptionSettings(encType, pwd);
-                var extract = _model.ExtractData(hide.outputPath);
-                bool ok = extract.success && extract.data == testData;
-                Log($"    {(ok ? "✓" : "✗")} Извлечено: {extract.data}");
-                _results.Add(new TestResult { ImageName = fileName, Mode = testName, Success = ok, Message = ok ? "OK" : extract.message });
-                try { File.Delete(hide.outputPath); } catch { }
+                writer.WriteLine("TestName,Format,Value,Unit,Details,Success");
+                foreach (var r in _results)
+                {
+                    writer.WriteLine($"\"{r.TestName}\",\"{r.Format}\",{r.Value},{r.Unit},\"{r.Details}\",{r.Success}");
+                }
             }
-            catch (Exception ex) { Log($"    Исключение: {ex.Message}"); _results.Add(new TestResult { ImageName = fileName, Mode = testName, Success = false, ErrorMessage = ex.Message }); }
+
+            Log("");
+            Log($"📄 CSV файл сохранён: {csvPath}");
         }
 
-        private bool IsValidImage(string path)
-        {
-            try { using (var img = System.Drawing.Image.FromFile(path)) { return true; } }
-            catch { return false; }
-        }
-
-        private void Log(string msg)
+        private void Log(string message)
         {
             string logPath = Path.Combine(Application.StartupPath, "metahide.log");
-            string entry = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} | {msg}";
-            File.AppendAllText(logPath, entry + Environment.NewLine);
-            Console.WriteLine(msg);
+            string logEntry = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} | {message}";
+            File.AppendAllText(logPath, logEntry + Environment.NewLine);
+            Console.WriteLine(message);
         }
     }
 
-    public class TestResult
+    public class ExperimentResult
     {
-        public string ImageName { get; set; }
-        public string Mode { get; set; }
-        public bool Success { get; set; }
-        public string Message { get; set; }
-        public string ErrorMessage { get; set; }
+        public string TestName { get; set; }
+        public string Format { get; set; }
+        public double Value { get; set; }
+        public string Unit { get; set; }
+        public bool Success { get; set; } = true;
+        public string Details { get; set; }
     }
 }

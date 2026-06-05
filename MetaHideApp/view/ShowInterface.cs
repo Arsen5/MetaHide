@@ -24,6 +24,11 @@ public partial class View
     // Элемент для выбора метода
     private Guna2ComboBox methodComboBox;
 
+    // Элементы для WAV (битрейт)
+    private Guna2Panel wavSettingsPanel;
+    private Guna2TrackBar wavTrackBar;
+    private Label wavValueLabel;
+
     private void CreateInterface()
     {
         // ========== ХЕДЕР ==========
@@ -34,7 +39,6 @@ public partial class View
             FillColor = Color.White,
             BorderColor = Color.LightGray,
             BorderThickness = 1,
-            // Задаем внутренние отступы: 30 слева/справа, 0 сверху/снизу
             Padding = new Padding(30, 0, 30, 0)
         };
 
@@ -42,29 +46,23 @@ public partial class View
         {
             Image = Image.FromFile("imgs/ico.png"),
             BackColor = Color.Transparent,
-            // Меняем на Normal, чтобы контролировать размер вручную
             SizeMode = PictureBoxSizeMode.Normal,
             Dock = DockStyle.Left,
-            // Растягиваем PictureBox на всю высоту панели (50px)
             Height = 50,
-            // Задаем ширину, равную ширине иконки (например, 16px или 24px)
             Width = 16,
-            // Центрируем саму картинку внутри PictureBox:
-            // 17px сверху и снизу ( (50 высоты - 16 иконки) / 2 = 17 )
             Padding = new Padding(0, 17, 0, 17)
         };
 
         var title = new Label
         {
-            Text = "  MetaHide", // Пробелы слева сделают отступ от иконки
+            Text = "  MetaHide",
             ForeColor = ColorTranslator.FromHtml("#444444"),
             Font = new Font("Segoe UI", 14, FontStyle.Bold),
             BackColor = Color.Transparent,
             Dock = DockStyle.Left,
-            // Выключаем AutoSize, чтобы лейбл занял всю доступную высоту и сработало выравнивание
             AutoSize = false,
-            Width = 150, // Задайте ширину с запасом под текст
-            TextAlign = ContentAlignment.MiddleLeft // Выравнивание по левому краю, но по центру высоты
+            Width = 150,
+            TextAlign = ContentAlignment.MiddleLeft
         };
 
         var version = new Label
@@ -74,16 +72,14 @@ public partial class View
             Font = new Font("Segoe UI", 10),
             BackColor = Color.Transparent,
             Dock = DockStyle.Right,
-            // Выключаем AutoSize для вертикального центрирования
             AutoSize = false,
-            Width = 100, // Задайте ширину с запасом под текст версии
-            TextAlign = ContentAlignment.MiddleRight // Выравнивание по правому краю, по центру высоты
+            Width = 100,
+            TextAlign = ContentAlignment.MiddleRight
         };
 
-        // Важен правильный порядок добавления контролов на панель
-        header.Controls.Add(title);   // Вторым слева
-        header.Controls.Add(img);     // Самым первым слева
-        header.Controls.Add(version); // Справа
+        header.Controls.Add(title);
+        header.Controls.Add(img);
+        header.Controls.Add(version);
 
         // ========== ЛЕВАЯ ПАНЕЛЬ (МЕТОДЫ) ==========
         var methodPanel = new Guna2Panel
@@ -105,12 +101,9 @@ public partial class View
             BackColor = Color.White
         };
 
-        // Настройка строк
         table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-
-        // Фиксированная ширина колонки
         table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 280));
 
         var methodLabel = new Label
@@ -123,9 +116,10 @@ public partial class View
             Margin = new Padding(0, 0, 0, 2)
         };
         table.Controls.Add(methodLabel, 0, 0);
+
         var mlabel2 = new Label
         {
-            Text = "Сначала выберите изображение",
+            Text = "Сначала выберите файл",
             Font = new Font("Segoe UI", 10),
             ForeColor = ColorTranslator.FromHtml("#666666"),
             BackColor = Color.White,
@@ -162,13 +156,21 @@ public partial class View
                 methodType = "gif";
             else if (selectedText.Contains("JSteg"))
                 methodType = "jsteg";
+            else if (selectedText.Contains("WAV"))
+                methodType = "lsb";
+            else if (selectedText.Contains("MP3"))
+                methodType = "mp3";
+            else if (selectedText.Contains("MP4") || selectedText.Contains("AVI") || selectedText.Contains("MKV"))
+                methodType = "video";
             else
                 methodType = "exif";
 
-
-
             MethodTypeChanged?.Invoke(methodType);
             ModeChangedRequested?.Invoke(methodType == "marker");
+
+            bool isWav = selectedText.Contains("WAV");
+            wavSettingsPanel.Visible = isWav;
+
             UpdateStatus($"Метод: {methodComboBox.Text}");
         };
         table.Controls.Add(methodComboBox, 0, 2);
@@ -191,18 +193,15 @@ public partial class View
         {
             Dock = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount = 4,
+            RowCount = 5,
             BackColor = Color.White
         };
 
-        // Настройка строк
         table2.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         table2.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         table2.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         table2.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         table2.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-
-        // Фиксированная ширина колонки
         table2.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 280));
 
         var crypto = new Label
@@ -291,7 +290,7 @@ public partial class View
         // ========== ПАНЕЛЬ ЛОГОВ ==========
         var logPanel = new Guna2Panel
         {
-            Size = new Size(340, 165),
+            Size = new Size(340, 160),
             Location = new Point(20, 360),
             FillColor = ColorTranslator.FromHtml("#EEF2FF"),
             BorderRadius = 20,
@@ -302,7 +301,7 @@ public partial class View
 
         var table3 = new TableLayoutPanel
         {
-            Size = new Size(300, 140),
+            Size = new Size(300, 130),
             Location = new Point(20, 15),
             ColumnCount = 2,
             RowCount = 4,
@@ -310,17 +309,12 @@ public partial class View
             Margin = new Padding(0)
         };
 
-        // Настройка колонок
         table3.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
         table3.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-
-        // Настройка строк
         table3.RowStyles.Add(new RowStyle(SizeType.Absolute, 35));
         table3.RowStyles.Add(new RowStyle(SizeType.Absolute, 35));
         table3.RowStyles.Add(new RowStyle(SizeType.Absolute, 35));
         table3.RowStyles.Add(new RowStyle(SizeType.Absolute, 35));
-
-        // ========== СТРОКА 0: Включить сжатие (слева) + Порог (справа) ==========
 
         compressionCheckBox = new Guna2CheckBox
         {
@@ -374,7 +368,6 @@ public partial class View
         thresholdPanel.Controls.Add(thresholdTextBox);
         table3.Controls.Add(thresholdPanel, 1, 0);
 
-        // ========== СТРОКА 1: Инструкция ==========
         var instructButton = new Guna2Button
         {
             Text = "Инструкция",
@@ -383,7 +376,7 @@ public partial class View
             BorderRadius = 10,
             BorderThickness = 1,
             BorderColor = Color.LightGray,
-            Size = new Size(140, 35),
+            Size = new Size(140, 30),
             Font = new Font("Segoe UI", 10),
             Cursor = Cursors.Hand,
             Anchor = AnchorStyles.Left
@@ -393,18 +386,15 @@ public partial class View
             if (_instructionWindow == null || _instructionWindow.IsDisposed)
             {
                 _instructionWindow = new InstructionForm();
-                _instructionWindow.Show(); // Открывает как отдельное независимое окно
+                _instructionWindow.Show();
             }
             else
             {
-                // Если окно уже открыто, просто выводим его на передний план
                 _instructionWindow.BringToFront();
             }
         };
         instructButton.HoverState.FillColor = ColorTranslator.FromHtml("#E2E8F0");
         table3.Controls.Add(instructButton, 0, 1);
-
-        // ========== СТРОКА 2: Журнал логов (слева) + Очистить лог (справа) ==========
 
         var logButton = new Guna2Button
         {
@@ -414,7 +404,7 @@ public partial class View
             BorderRadius = 10,
             BorderThickness = 1,
             BorderColor = Color.LightGray,
-            Size = new Size(140, 35),
+            Size = new Size(140, 30),
             Font = new Font("Segoe UI", 10),
             Cursor = Cursors.Hand,
             Anchor = AnchorStyles.Left
@@ -436,7 +426,7 @@ public partial class View
             BorderRadius = 10,
             BorderThickness = 1,
             BorderColor = Color.LightGray,
-            Size = new Size(140, 35),
+            Size = new Size(140, 30),
             Font = new Font("Segoe UI", 10),
             Cursor = Cursors.Hand,
             Anchor = AnchorStyles.Right
@@ -450,7 +440,6 @@ public partial class View
         clearLogButton.HoverState.FillColor = ColorTranslator.FromHtml("#FEE2E2");
         table3.Controls.Add(clearLogButton, 1, 2);
 
-        // ========== СТРОКА 3: Запустить тесты ==========
         var testButton = new Guna2Button
         {
             Text = "Запустить тесты",
@@ -477,6 +466,58 @@ public partial class View
 
         logPanel.Controls.Add(table3);
 
+        // ========== ПАНЕЛЬ НАСТРОЕК WAV ==========
+        wavSettingsPanel = new Guna2Panel
+        {
+            Size = new Size(340, 60),
+            Location = new Point(20, 530),
+            FillColor = Color.White,
+            BorderRadius = 20,
+            BorderColor = Color.LightGray,
+            BorderThickness = 1,
+            Padding = new Padding(15, 8, 15, 8),
+            Visible = false
+        };
+
+        var wavLabel = new Label
+        {
+            Text = "Бит на сэмпл (WAV):",
+            Font = new Font("Segoe UI", 9, FontStyle.Bold),
+            ForeColor = ColorTranslator.FromHtml("#333333"),
+            AutoSize = true,
+            Location = new Point(15, 8)
+        };
+
+        wavTrackBar = new Guna2TrackBar
+        {
+            Minimum = 1,
+            Maximum = 8,
+            Value = 1,
+            Size = new Size(180, 25),
+            Location = new Point(15, 28)
+        };
+
+        wavValueLabel = new Label
+        {
+            Text = "1 бит (незаметно)",
+            Font = new Font("Segoe UI", 8),
+            ForeColor = Color.Gray,
+            AutoSize = true,
+            Location = new Point(200, 32)
+        };
+
+        wavTrackBar.Scroll += (s, e) =>
+        {
+            int bits = wavTrackBar.Value;
+            string desc = bits == 1 ? "незаметно" : bits <= 3 ? "средне" : "заметно";
+            wavValueLabel.Text = $"{bits} бит ({desc})";
+            WavBitsPerSampleChanged?.Invoke(bits);
+        };
+
+        wavSettingsPanel.Controls.Add(wavLabel);
+        wavSettingsPanel.Controls.Add(wavTrackBar);
+        wavSettingsPanel.Controls.Add(wavValueLabel);
+
         // ========== ЦЕНТРАЛЬНАЯ PANEL (DROP) ==========
         MainPanel = new Guna2Panel
         {
@@ -489,6 +530,7 @@ public partial class View
             BorderThickness = 1,
         };
         MainWindow();
+
         // ========== ФУТЕР ==========
         var footer = new Guna2Panel
         {
@@ -510,6 +552,7 @@ public partial class View
             BackColor = Color.Transparent,
             Padding = new Padding(10, 5, 10, 5)
         };
+
         lblStatus = new Label
         {
             Text = "Файл — не выбран",
@@ -518,6 +561,7 @@ public partial class View
             Font = new Font("Segoe UI", 9, FontStyle.Bold),
             AutoSize = true
         };
+
         var t1 = new Label
         {
             Text = "Статус: ожидание загрузки",
@@ -526,6 +570,7 @@ public partial class View
             Font = new Font("Segoe UI", 8),
             AutoSize = true
         };
+
         footerFile.Controls.Add(t1);
         footerFile.Controls.Add(lblStatus);
 
@@ -546,9 +591,10 @@ public partial class View
         btnHide.Click += (s, e) =>
         {
             if (string.IsNullOrEmpty(_selectedImagePath))
-                MessageBox.Show("Сначала выберите изображение!", "Внимание");
+                MessageBox.Show("Сначала выберите файл!", "Внимание");
             else TextWindow();
         };
+
         btnExtract = new Guna2Button
         {
             Text = "Расшифровать",
@@ -566,7 +612,7 @@ public partial class View
         btnExtract.Click += (s, e) =>
         {
             if (string.IsNullOrEmpty(_selectedImagePath))
-                MessageBox.Show("Сначала выберите изображение!", "Внимание");
+                MessageBox.Show("Сначала выберите файл!", "Внимание");
             else ExtractRequested?.Invoke(_selectedImagePath);
         };
 
@@ -580,55 +626,76 @@ public partial class View
         form.Controls.Add(methodPanel);
         form.Controls.Add(methodPanel2);
         form.Controls.Add(logPanel);
+        form.Controls.Add(wavSettingsPanel);
         form.Controls.Add(header);
     }
 
-    // Обновление доступных методов в зависимости от типа файла
+    public event Action<int>? WavBitsPerSampleChanged;
+
     private void UpdateAvailableMethods(string filePath)
     {
         string ext = Path.GetExtension(filePath).ToLower();
         methodComboBox.Items.Clear();
+
         switch (ext)
         {
             case ".jpg":
             case ".jpeg":
-                methodComboBox.Items.AddRange(new[] { "Обычный (видно в свойствах)", "Скрытый (маркер в конец)", "JSteg (DCT)"});
+                methodComboBox.Items.AddRange(new[] { "Обычный (видно в свойствах)", "Скрытый (маркер в конец)", "JSteg (DCT)" });
                 methodComboBox.SelectedIndex = 0;
                 methodComboBox.Enabled = true;
+                wavSettingsPanel.Visible = false;
                 break;
             case ".png":
                 methodComboBox.Items.AddRange(new[] { "Обычный (видно в свойствах)", "Скрытый (маркер в конец)", "LSB (в пикселях)" });
                 methodComboBox.SelectedIndex = 0;
                 methodComboBox.Enabled = true;
+                wavSettingsPanel.Visible = false;
                 break;
             case ".wav":
-                methodComboBox.Items.AddRange(new[] { "LSB (в сэмплах)" });
+                methodComboBox.Items.AddRange(new[] { "LSB (WAV, в сэмплах)" });
                 methodComboBox.SelectedIndex = 0;
                 methodComboBox.Enabled = true;
+                wavSettingsPanel.Visible = true;
+                break;
+            case ".mp3":
+                methodComboBox.Items.AddRange(new[] { "ID3 комментарий (MP3)" });
+                methodComboBox.SelectedIndex = 0;
+                methodComboBox.Enabled = true;
+                wavSettingsPanel.Visible = false;
+                break;
+            case ".mp4":
+            case ".avi":
+            case ".mkv":
+                methodComboBox.Items.AddRange(new[] { "Метаданные (видео)" });
+                methodComboBox.SelectedIndex = 0;
+                methodComboBox.Enabled = true;
+                wavSettingsPanel.Visible = false;
                 break;
             case ".bmp":
                 methodComboBox.Items.AddRange(new[] { "LSB (в пикселях)", "Скрытый (маркер в конец)" });
                 methodComboBox.SelectedIndex = 0;
                 methodComboBox.Enabled = true;
+                wavSettingsPanel.Visible = false;
                 break;
             case ".gif":
                 methodComboBox.Items.AddRange(new[] { "Скрытый (маркер в конец)", "GIF (комментарий)" });
                 methodComboBox.SelectedIndex = 0;
                 methodComboBox.Enabled = true;
+                wavSettingsPanel.Visible = false;
                 break;
             default:
                 methodComboBox.Items.Add("Формат не поддерживается");
                 methodComboBox.Enabled = false;
+                wavSettingsPanel.Visible = false;
                 break;
         }
     }
 
     private void MainWindow()
     {
-        // Очищаем старые элементы управления, чтобы избежать дублирования
         MainPanel.Controls.Clear();
 
-        // Настройка событий Drag & Drop
         MainPanel.DragEnter += (s, e) => { if (e.Data.GetDataPresent(DataFormats.FileDrop)) e.Effect = DragDropEffects.Copy; };
         MainPanel.DragDrop += (s, e) =>
         {
@@ -636,7 +703,7 @@ public partial class View
             if (files != null && files.Length > 0)
             {
                 string ext = Path.GetExtension(files[0]).ToLower();
-                if (ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".bmp" || ext == ".gif" || ext == ".wav")
+                if (ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".bmp" || ext == ".gif" || ext == ".wav" || ext == ".mp3" || ext == ".mp4" || ext == ".avi" || ext == ".mkv")
                 {
                     _selectedImagePath = files[0];
                     UpdateStatus($"Выбран файл: {Path.GetFileName(files[0])}");
@@ -644,11 +711,10 @@ public partial class View
                     UpdateAvailableMethods(files[0]);
                     SelectedFileWindow();
                 }
-                else UpdateStatus("Пожалуйста, выберите JPG, PNG, BMP или GIF файл");
+                else UpdateStatus("Пожалуйста, выберите поддерживаемый файл");
             }
         };
 
-        // 1. ИКОНКА (Явно задаем размер 64x64 для точного расчета координат)
         var image = new PictureBox
         {
             Size = new Size(64, 64),
@@ -656,25 +722,21 @@ public partial class View
             Image = Image.FromFile("imgs/SVG.png"),
             BackColor = Color.Transparent
         };
-        // Позиционирование иконки по центру горизонтали
         image.Location = new Point((MainPanel.Width - image.Width) / 2, 90);
 
-        // 2. ТЕКСТ (Выравнивание через фиксированную ширину контейнера)
         var text = new Label
         {
             Text = "Перетащите файл сюда",
             Font = new Font("Segoe UI", 18),
             ForeColor = Color.Gray,
             BackColor = Color.Transparent,
-            AutoSize = false,                       // Отключаем, чтобы контролировать ширину
-            Width = MainPanel.Width,                // Растягиваем во всю ширину панели
+            AutoSize = false,
+            Width = MainPanel.Width,
             Height = 40,
-            TextAlign = ContentAlignment.MiddleCenter // Центрируем сам текст внутри блока
+            TextAlign = ContentAlignment.MiddleCenter
         };
-        // Размещаем строго под иконкой с отступом в 15 пикселей
         text.Location = new Point(0, image.Bottom + 15);
 
-        // 3. КНОПКА ВЫБОРА ФАЙЛА
         btnSelectImage = new Guna2Button
         {
             Text = "Выберите файл",
@@ -685,37 +747,35 @@ public partial class View
             Size = new Size(180, 50),
             Cursor = Cursors.Hand,
             BackColor = Color.Transparent,
-            UseTransparentBackground = true // Корректное отображение Guna-компонента
+            UseTransparentBackground = true
         };
         btnSelectImage.Click += (s, e) => SelectFile();
-        // Позиционируем кнопку по центру под текстом с отступом в 20 пикселей
         btnSelectImage.Location = new Point((MainPanel.Width - btnSelectImage.Width) / 2, text.Bottom + 20);
+
         var text2 = new Label
         {
-            Text = "Поддерживаемые форматы: png/jpg/bmp/gif",
+            Text = "Поддерживаемые форматы: png/jpg/bmp/gif/wav/mp3/mp4/avi/mkv",
             Font = new Font("Segoe UI", 13),
             ForeColor = Color.Gray,
             BackColor = Color.Transparent,
-            AutoSize = false,                       // Отключаем, чтобы контролировать ширину
-            Width = MainPanel.Width,                // Растягиваем во всю ширину панели
+            AutoSize = false,
+            Width = MainPanel.Width,
             Height = 40,
-            TextAlign = ContentAlignment.MiddleCenter // Центрируем сам текст внутри блока
+            TextAlign = ContentAlignment.MiddleCenter
         };
-        // Размещаем строго под иконкой с отступом в 15 пикселей
         text2.Location = new Point(0, btnSelectImage.Bottom + 15);
-        // Добавляем все настроенные элементы на панель
+
         MainPanel.Controls.Add(image);
         MainPanel.Controls.Add(text);
         MainPanel.Controls.Add(btnSelectImage);
         MainPanel.Controls.Add(text2);
     }
 
-
     private void SelectFile()
     {
         using (OpenFileDialog ofd = new OpenFileDialog())
         {
-            ofd.Filter = "Изображения и аудио|*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.wav";
+            ofd.Filter = "Все файлы|*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.wav;*.mp3;*.mp4;*.avi;*.mkv|Изображения|*.jpg;*.jpeg;*.png;*.bmp;*.gif|Аудио|*.wav;*.mp3|Видео|*.mp4;*.avi;*.mkv";
             if (ofd.ShowDialog() == DialogResult.OK)
             {
                 SetSelectedImagePath(ofd.FileName);
@@ -775,6 +835,7 @@ public partial class View
         MainPanel.Controls.Add(text);
         MainPanel.Controls.Add(image);
     }
+
     public string GetSelectedMethod()
     {
         if (methodComboBox.SelectedItem == null) return "exif";
@@ -782,9 +843,12 @@ public partial class View
         if (selectedText.Contains("JSteg")) return "jsteg";
         if (selectedText.Contains("LSB")) return "lsb";
         if (selectedText.Contains("GIF")) return "gif";
+        if (selectedText.Contains("ID3")) return "mp3";
+        if (selectedText.Contains("Метаданные")) return "video";
         if (selectedText.Contains("Скрытый") && !selectedText.Contains("JSteg")) return "marker";
         return "exif";
     }
+
     public void TextWindow()
     {
         MainPanel.Controls.Clear();
@@ -874,5 +938,6 @@ public partial class View
             _ => EncryptionModel.EncryptionType.None
         };
     }
+
     private string GetPassword() => passwordTextBox?.Text ?? "";
 }

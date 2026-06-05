@@ -30,13 +30,18 @@ namespace MetaHide.controller
             _currentMethod = methodType;
             _model.SetMethod(methodType);
             _view.UpdateStatus($"Выбран метод: {methodType}");
+
+            if (methodType == "mp3")
+                _view.UpdateStatus("MP3: данные скрываются в ID3 комментариях");
+            else if (methodType == "video")
+                _view.UpdateStatus("Видео: данные скрываются в метаданных");
         }
 
         private void OnHideRequested(string imagePath, string text)
         {
             if (string.IsNullOrEmpty(imagePath))
             {
-                MessageBox.Show("Сначала выберите изображение!");
+                MessageBox.Show("Сначала выберите файл!");
                 return;
             }
             if (string.IsNullOrEmpty(text))
@@ -67,7 +72,7 @@ namespace MetaHide.controller
         {
             if (string.IsNullOrEmpty(imagePath))
             {
-                MessageBox.Show("Сначала выберите изображение!");
+                MessageBox.Show("Сначала выберите файл!");
                 return;
             }
 
